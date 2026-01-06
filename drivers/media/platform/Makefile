@@ -32,7 +32,7 @@ obj-y += ti/
 obj-y += verisilicon/
 obj-y += via/
 obj-y += xilinx/
-
+obj-y += soph/
 # Please place here only ancillary drivers that aren't SoC-specific
 # Please keep it alphabetically sorted by Kconfig name
 # (e. g. LC_ALL=C sort Makefile)
