@@ -55,6 +55,14 @@ void sdhci_dumpregs(struct sdhci_host *host)
 {
 	SDHCI_DUMP("============ SDHCI REGISTER DUMP ===========\n");
 
+	// 添加这行调试
+    printk(KERN_ERR "Debug: Attempting to read SDHCI_DMA_ADDRESS at %p\n", host->ioaddr + SDHCI_DMA_ADDRESS);
+
+    // 如果打印完上面这句就重启了，说明下面这句 readl 触发了总线错误
+    u32 dma_addr = sdhci_readl(host, SDHCI_DMA_ADDRESS);
+    
+    printk(KERN_ERR "Debug: Read success, val=%x\n", dma_addr);
+
 	SDHCI_DUMP("Sys addr:  0x%08x | Version:  0x%08x\n",
 		   sdhci_readl(host, SDHCI_DMA_ADDRESS),
 		   sdhci_readw(host, SDHCI_HOST_VERSION));

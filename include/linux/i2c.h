@@ -747,6 +747,10 @@ struct i2c_adapter {
 #define I2C_ALF_IS_SUSPENDED		0
 #define I2C_ALF_SUSPEND_REPORTED	1
 
+#if defined(CONFIG_ARCH_CVITEK)
+	int i2c_idx;
+#endif
+
 	int nr;
 	char name[48];
 	struct completion dev_released;
