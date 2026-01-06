@@ -406,7 +406,7 @@ config ARCH_CVITEK
 if ARCH_CVITEK
 choice
     prompt "Select the chip of SoC"
-    default ARCH_CV183X
+    default ARCH_CV186X
     help
       Select the chip for SoC
 
@@ -564,7 +564,7 @@ config ARCH_CVITEK_CHIP
 
 choice
     prompt "Select the platform of SoC"
-    default ARCH_CV186X_FPGA
+    default ARCH_CV186X_ASIC
     help
       Select the platform of SoC
         FPGA
