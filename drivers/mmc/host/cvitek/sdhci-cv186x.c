@@ -1148,6 +1148,26 @@ static int sdhci_cvi_probe(struct platform_device *pdev)
 		extra = SDHCI_MAX_SEGS;
 	host->adma_table_cnt += extra;
 
+	if (pltfm_host->clk && !IS_ERR(pltfm_host->clk)) {
+		host->mmc->f_src = clk_get_rate(pltfm_host->clk);
+		pr_debug("%s: set f_src to %u Hz\n", __func__, host->mmc->f_src);
+	} else {
+		/* get src-frequency from dts */
+		u32 src_freq = 0;
+
+		if (!of_property_read_u32(pdev->dev.of_node, "src-frequency", &src_freq)) {
+			host->mmc->f_src = src_freq;
+			pr_debug("%s: using src-frequency from dts: %u Hz\n", __func__, host->mmc->f_src);
+		}
+		/* if no src-frequency, try using f_max */
+		else if (host->mmc->f_max) {
+			host->mmc->f_src = host->mmc->f_max;
+			pr_debug("%s: using f_max as f_src: %u Hz\n", __func__, host->mmc->f_src);
+		} else {
+			pr_err("%s: No clock found and no max-frequency in DTS!\n", __func__);
+		}
+	}
+
 	ret = sdhci_add_host(host);
 	if (ret)
 		goto gpio_release;
