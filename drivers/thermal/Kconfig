@@ -499,4 +499,15 @@ config LOONGSON2_THERMAL
 	  is higher than the high temperature threshold or lower than the low
 	  temperature threshold, the interrupt will occur.
 
+config CV186X_THERMAL
+	tristate "Temperature sensor driver for CVITEK CV186X"
+	depends on ARCH_CV186X || COMPILE_TEST
+	default y
+	help
+	  Select this driver for CVITEK CV186X temperature sensor monitoring
+	  system temperature measurements and alerts.
+	  This driver is used for monitoring the temperature sensor and handles
+	  the alert trip point interrupts and notifies the thermal framework with
+	  the trip point and temperature details of the zone.
+
 endif
