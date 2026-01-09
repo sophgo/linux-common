@@ -21,7 +21,7 @@
 #include "../codecs/cv181xadac.h"
 #include <linux/version.h>
 
-struct proc_dir_entry *proc_audio_dir;
+//struct proc_dir_entry *proc_audio_dir;
 bool proc_ao_not_allocted = true;
 
 static int cv181x_dac_hw_params(struct snd_pcm_substream *substream,
