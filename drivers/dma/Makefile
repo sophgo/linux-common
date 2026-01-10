@@ -87,6 +87,7 @@ obj-$(CONFIG_INTEL_LDMA) += lgm/
 
 obj-y += amd/
 obj-y += mediatek/
+obj-y += cvitek/
 obj-y += qcom/
 obj-y += stm32/
 obj-y += ti/

@@ -19,6 +19,7 @@ void arch_sync_dma_for_device(phys_addr_t paddr, size_t size,
 
 	dcache_clean_poc(start, start + size);
 }
+EXPORT_SYMBOL(arch_sync_dma_for_device);
 
 void arch_sync_dma_for_cpu(phys_addr_t paddr, size_t size,
 			   enum dma_data_direction dir)
@@ -31,6 +32,7 @@ void arch_sync_dma_for_cpu(phys_addr_t paddr, size_t size,
 	dcache_inval_poc(start, start + size);
 }
 
+EXPORT_SYMBOL(arch_sync_dma_for_cpu);
 void arch_dma_prep_coherent(struct page *page, size_t size)
 {
 	unsigned long start = (unsigned long)page_address(page);

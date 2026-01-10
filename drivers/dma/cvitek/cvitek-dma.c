@@ -8,7 +8,8 @@
 #include <linux/dmaengine.h>
 #include <linux/dma-mapping.h>
 #include <linux/dmapool.h>
-
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>  
 #include <linux/of.h>
 #include <linux/of_dma.h>
 #include <linux/acpi.h>
@@ -1838,7 +1839,7 @@ static int dma_proc_show(struct seq_file *m, void *v)
 
 static int seq_dma_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, dma_proc_show, PDE_DATA(inode));
+	return single_open(file, dma_proc_show, pde_data(inode));
 }
 
 static int ch_proc_show(struct seq_file *m, void *v)
@@ -1866,7 +1867,7 @@ static int ch_proc_show(struct seq_file *m, void *v)
 
 static int seq_ch_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, ch_proc_show, PDE_DATA(inode));
+	return single_open(file, ch_proc_show, pde_data(inode));
 }
 
 static int log_proc_show(struct seq_file *m, void *v)
@@ -1880,12 +1881,12 @@ static int log_proc_show(struct seq_file *m, void *v)
 
 static int seq_log_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, log_proc_show, PDE_DATA(inode));
+	return single_open(file, log_proc_show, pde_data(inode));
 }
 
 static ssize_t log_level_write(struct file *file, const char __user *data, size_t len, loff_t *off)
 {
-	struct dw_dma *dw = PDE_DATA(file_inode(file));
+	struct dw_dma *dw = pde_data(file_inode(file));
 	char buf[3];
 
 	if (data && !copy_from_user(buf, data, len)) {
@@ -2052,7 +2053,7 @@ static int __dw_dma_remove(struct dw_dma *dw)
 	return 0;
 }
 
-static int dw_dma_remove(struct platform_device *pdev)
+static void dw_dma_remove(struct platform_device *pdev)
 {
 	struct dw_dma *dw = platform_get_drvdata(pdev);
 
@@ -2063,7 +2064,7 @@ static int dw_dma_remove(struct platform_device *pdev)
 	pm_runtime_disable(&pdev->dev);
 	clk_unprepare(dw->clk);
 
-	return 0;
+	return;
 }
 
 static void dw_dma_shutdown(struct platform_device *pdev)
