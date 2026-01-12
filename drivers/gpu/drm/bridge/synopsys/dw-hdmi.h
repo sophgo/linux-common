@@ -158,17 +158,8 @@
 #define HDMI_FC_SPDDEVICEINF                    0x1062
 #define HDMI_FC_AUDSCONF                        0x1063
 #define HDMI_FC_AUDSSTAT                        0x1064
-#define HDMI_FC_AUDSV                           0x1065
-#define HDMI_FC_AUDSU                           0x1066
-#define HDMI_FC_AUDSCHNLS0                       0x1067
-#define HDMI_FC_AUDSCHNLS1                       0x1068
-#define HDMI_FC_AUDSCHNLS2                       0x1069
-#define HDMI_FC_AUDSCHNLS3                       0x106A
-#define HDMI_FC_AUDSCHNLS4                       0x106B
-#define HDMI_FC_AUDSCHNLS5                       0x106C
-#define HDMI_FC_AUDSCHNLS6                       0x106D
-#define HDMI_FC_AUDSCHNLS7                       0x106E
-#define HDMI_FC_AUDSCHNLS8                       0x106F
+#define HDMI_FC_AUDSCHNLS7                      0x106e
+#define HDMI_FC_AUDSCHNLS8                      0x106f
 #define HDMI_FC_DATACH0FILL                     0x1070
 #define HDMI_FC_DATACH1FILL                     0x1071
 #define HDMI_FC_DATACH2FILL                     0x1072
@@ -402,7 +393,7 @@
 #define HDMI_AUD_CTS2                           0x3204
 #define HDMI_AUD_CTS3                           0x3205
 #define HDMI_AUD_INPUTCLKFS                     0x3206
-#define HDMI_AUD_SPDIFINT			0x3302
+#define HDMI_AUD_SPDIFINT                       0x3302
 #define HDMI_AUD_CONF0_HBR                      0x3400
 #define HDMI_AUD_HBR_STATUS                     0x3401
 #define HDMI_AUD_HBR_INT                        0x3402
@@ -449,6 +440,7 @@
 #define HDMI_AHB_DMA_BUFFINT                    0x3618
 #define HDMI_AHB_DMA_BUFFMASK                   0x3619
 #define HDMI_AHB_DMA_BUFFPOL                    0x361a
+#define HDMI_AHB_DMA_STPADDR_SET1               0x3624
 
 /* Main Controller Registers */
 #define HDMI_MC_SFRDIV                          0x4000
@@ -517,6 +509,9 @@
 #define HDMI_A_INTSETUP                         0x5019
 #define HDMI_A_PRESETUP                         0x501A
 #define HDMI_A_SRM_BASE                         0x5020
+#define HDMI_A_HDCP_REVOC_LIST                  0x52BB
+#define HDMI_A_HDCP_REG_BKSV0                   0x7800
+#define HDMI_A_HDCP_REG_DPK6                    0x7818
 
 /* I2C Master Registers (E-DDC) */
 #define HDMI_I2CM_SLAVE                         0x7E00
@@ -538,6 +533,8 @@
 #define HDMI_I2CM_FS_SCL_HCNT_0_ADDR            0x7E10
 #define HDMI_I2CM_FS_SCL_LCNT_1_ADDR            0x7E11
 #define HDMI_I2CM_FS_SCL_LCNT_0_ADDR            0x7E12
+#define HDMI_I2CM_SCDC_UPDATE1                  0x7E31
+
 
 enum {
 /* PRODUCT_ID0 field values */
@@ -851,6 +848,10 @@ enum {
 	HDMI_FC_AVICONF3_QUANT_RANGE_LIMITED = 0x00,
 	HDMI_FC_AVICONF3_QUANT_RANGE_FULL = 0x04,
 
+/* HDMI_FC_GCP */
+	HDMI_FC_GCP_SET_AVMUTE = 0x2,
+	HDMI_FC_GCP_CLEAR_AVMUTE = 0x1,
+
 /* FC_DBGFORCE field values */
 	HDMI_FC_DBGFORCE_FORCEAUDIO = 0x10,
 	HDMI_FC_DBGFORCE_FORCEVIDEO = 0x1,
@@ -858,9 +859,6 @@ enum {
 /* FC_DATAUTO0 field values */
 	HDMI_FC_DATAUTO0_VSD_MASK = 0x08,
 	HDMI_FC_DATAUTO0_VSD_OFFSET = 3,
-
-/* FC_DATAUTO3 field values */
-	HDMI_FC_DATAUTO3_GCP_AUTO = 0x04,
 
 /* PHY_CONF0 field values */
 	HDMI_PHY_CONF0_PDZ_MASK = 0x80,
@@ -1164,5 +1162,33 @@ enum {
 #define HDMI_3D_TX_PHY_PTRPT_ENBL_TX_READY		BIT(2)
 #define HDMI_3D_TX_PHY_PTRPT_ENBL_CKO_WORD_ENB		BIT(1)
 #define HDMI_3D_TX_PHY_PTRPT_ENBL_REFCLK_ENB		BIT(0)
+
+
+/* HDMI_TX_PHY CFG*/
+
+#define OPMODE_PLLCFG	0x06 // Mode of Operation and PLL  Dividers Control Register
+#define PLLCURRCTRL		0x10 // PLL Current Control Register
+#define PLLDIVCTRL		0x11 // PLL Dividers Control Register
+#define TXTERM			0x19 // Transmission Termination Register
+#define VLEVCTRL		0x0E // Voltage Level Control Register
+#define CKSYMTXCTRL		0x09 // Clock Symbol and Transmitter Control Register
+
+#define LT_1_65GBPS_TXTERM 		0x0007
+#define LT_1_65GBPS_VLEVCTRL 	0x0160
+#define LT_1_65GBPS_CKSYMTXCTRL 0x8d88
+
+#define LT_3_40GBPS_TXTERM 		0x0000
+#define LT_3_40GBPS_VLEVCTRL 	0x0120
+#define LT_3_40GBPS_CKSYMTXCTRL 0x83F8
+
+#define GT_3_40GBPS_TXTERM 		0x0000
+#define GT_3_40GBPS_VLEVCTRL 	0x0140
+#define GT_3_40GBPS_CKSYMTXCTRL 0x80F6
+
+#define LT_1_65GBPS LT_1_65GBPS_TXTERM, LT_1_65GBPS_VLEVCTRL, LT_1_65GBPS_CKSYMTXCTRL
+#define LT_3_40GBPS LT_3_40GBPS_TXTERM, LT_3_40GBPS_VLEVCTRL, LT_3_40GBPS_CKSYMTXCTRL
+#define GT_3_40GBPS GT_3_40GBPS_TXTERM, GT_3_40GBPS_VLEVCTRL, GT_3_40GBPS_CKSYMTXCTRL
+
+void _reg_write_mask(void __iomem *addr, u32 mask, u32 data);
 
 #endif /* __DW_HDMI_H__ */

@@ -362,6 +362,10 @@ config DRM_SCHED
 	tristate
 	depends on DRM
 
+source "drivers/gpu/drm/cvitek/Kconfig"
+
+# source "drivers/gpu/drm/ms912x/Kconfig"
+
 source "drivers/gpu/drm/i2c/Kconfig"
 
 source "drivers/gpu/drm/arm/Kconfig"

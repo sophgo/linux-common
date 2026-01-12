@@ -6,6 +6,7 @@
 #ifndef __DW_HDMI__
 #define __DW_HDMI__
 
+#include <drm/drm_property.h>
 #include <sound/hdmi-codec.h>
 
 struct drm_display_info;
@@ -92,6 +93,48 @@ enum dw_hdmi_phy_type {
 	DW_HDMI_PHY_VENDOR_PHY = 0xfe,
 };
 
+typedef enum {
+	PIXEL_REPETITION_OFF = 0,
+	PIXEL_REPETITION_1 = 1,
+	PIXEL_REPETITION_2 = 2,
+	PIXEL_REPETITION_3 = 3,
+	PIXEL_REPETITION_4 = 4,
+	PIXEL_REPETITION_5 = 5,
+	PIXEL_REPETITION_6 = 6,
+	PIXEL_REPETITION_7 = 7,
+	PIXEL_REPETITION_8 = 8,
+	PIXEL_REPETITION_9 = 9,
+	PIXEL_REPETITION_10 = 10
+} pixel_repetition_t;
+
+typedef enum {
+	HDMI_14 = 1,
+	HDMI_20,
+	MHL_24,
+	MHL_PACKEDPIXEL
+} operation_mode_t;
+
+typedef enum {
+	COLOR_DEPTH_INVALID = 0,
+	COLOR_DEPTH_8 = 8,
+	COLOR_DEPTH_10 = 10,
+	COLOR_DEPTH_12 = 12,
+	COLOR_DEPTH_16 = 16
+} color_depth_t;
+
+struct phy_config {
+	u32			index;
+	pixel_repetition_t	pixel;
+	color_depth_t		color;
+	operation_mode_t	opmode;
+	u16			oppllcfg;
+	u16			pllcurrctrl;
+	u16			pllgmpctrl;
+	u16			txterm;
+	u16			vlevctrl;
+	u16			cksymtxctrl;
+};
+
 struct dw_hdmi_mpll_config {
 	unsigned long mpixelclock;
 	struct {
@@ -123,14 +166,33 @@ struct dw_hdmi_phy_ops {
 	void (*setup_hpd)(struct dw_hdmi *hdmi, void *data);
 };
 
+struct dw_hdmi_property_ops {
+	void (*attach_properties)(struct drm_connector *connector,
+				  unsigned int color, int version,
+				  void *data);
+	int (*set_property)(struct drm_connector *connector,
+			    // struct drm_connector_state *state,
+			    struct drm_property *property,
+			    u64 val,
+			    void *data);
+	int (*get_property)(struct drm_connector *connector,
+			    // const struct drm_connector_state *state,
+			    struct drm_property *property,
+			    u64 *val,
+			    void *data);
+};
+
 struct dw_hdmi_plat_data {
 	struct regmap *regm;
 
-	unsigned int output_port;
-
+	unsigned long input_bus_format;
 	unsigned long input_bus_encoding;
+	unsigned int max_tmdsclk;
+	int id;
 	bool use_drm_infoframe;
 	bool ycbcr_420_allowed;
+	bool unsupported_yuv_input;
+	bool unsupported_deep_color;
 
 	/*
 	 * Private data passed to all the .mode_valid() and .configure_phy()
@@ -139,14 +201,10 @@ struct dw_hdmi_plat_data {
 	void *priv_data;
 
 	/* Platform-specific mode validation (optional). */
-	enum drm_mode_status (*mode_valid)(struct dw_hdmi *hdmi, void *data,
+	enum drm_mode_status (*mode_valid)(struct dw_hdmi *hdmi,
+					   void *data,
 					   const struct drm_display_info *info,
 					   const struct drm_display_mode *mode);
-
-	/* Platform-specific audio enable/disable (optional) */
-	void (*enable_audio)(struct dw_hdmi *hdmi, int channel,
-			     int width, int rate, int non_pcm);
-	void (*disable_audio)(struct dw_hdmi *hdmi);
 
 	/* Vendor PHY support */
 	const struct dw_hdmi_phy_ops *phy_ops;
@@ -160,8 +218,19 @@ struct dw_hdmi_plat_data {
 	const struct dw_hdmi_phy_config *phy_config;
 	int (*configure_phy)(struct dw_hdmi *hdmi, void *data,
 			     unsigned long mpixelclock);
+	struct phy_config* (*phy316_config)(u32 pClk, color_depth_t color,
+		pixel_repetition_t pixel);
+	unsigned long (*get_input_bus_format)(void *data);
+	unsigned long (*get_output_bus_format)(void *data);
+	unsigned long (*get_enc_in_encoding)(void *data);
+	unsigned long (*get_enc_out_encoding)(void *data);
+	unsigned long (*get_quant_range)(void *data);
 
-	unsigned int disable_cec : 1;
+	bool (*get_color_changed)(void *data);
+
+	/* Vendor Property support */
+	const struct dw_hdmi_property_ops *property_ops;
+	struct drm_connector *connector;
 };
 
 struct dw_hdmi *dw_hdmi_probe(struct platform_device *pdev,
@@ -174,12 +243,12 @@ struct dw_hdmi *dw_hdmi_bind(struct platform_device *pdev,
 
 void dw_hdmi_resume(struct dw_hdmi *hdmi);
 
+void dw_hdmi_suspend(struct dw_hdmi *hdmi);
+
 void dw_hdmi_setup_rx_sense(struct dw_hdmi *hdmi, bool hpd, bool rx_sense);
 
 int dw_hdmi_set_plugged_cb(struct dw_hdmi *hdmi, hdmi_codec_plugged_cb fn,
 			   struct device *codec_dev);
-void dw_hdmi_set_sample_non_pcm(struct dw_hdmi *hdmi, unsigned int non_pcm);
-void dw_hdmi_set_sample_width(struct dw_hdmi *hdmi, unsigned int width);
 void dw_hdmi_set_sample_rate(struct dw_hdmi *hdmi, unsigned int rate);
 void dw_hdmi_set_channel_count(struct dw_hdmi *hdmi, unsigned int cnt);
 void dw_hdmi_set_channel_status(struct dw_hdmi *hdmi, u8 *channel_status);
@@ -194,18 +263,19 @@ void dw_hdmi_phy_i2c_set_addr(struct dw_hdmi *hdmi, u8 address);
 void dw_hdmi_phy_i2c_write(struct dw_hdmi *hdmi, unsigned short data,
 			   unsigned char addr);
 
-void dw_hdmi_phy_gen1_reset(struct dw_hdmi *hdmi);
-
 void dw_hdmi_phy_gen2_pddq(struct dw_hdmi *hdmi, u8 enable);
 void dw_hdmi_phy_gen2_txpwron(struct dw_hdmi *hdmi, u8 enable);
-void dw_hdmi_phy_gen2_reset(struct dw_hdmi *hdmi);
+void dw_hdmi_phy_reset(struct dw_hdmi *hdmi);
 
 enum drm_connector_status dw_hdmi_phy_read_hpd(struct dw_hdmi *hdmi,
 					       void *data);
 void dw_hdmi_phy_update_hpd(struct dw_hdmi *hdmi, void *data,
 			    bool force, bool disabled, bool rxsense);
 void dw_hdmi_phy_setup_hpd(struct dw_hdmi *hdmi, void *data);
+void dw_hdmi_set_quant_range(struct dw_hdmi *hdmi);
+void dw_hdmi_set_output_type(struct dw_hdmi *hdmi, u64 val);
+bool dw_hdmi_get_output_whether_hdmi(struct dw_hdmi *hdmi);
+int dw_hdmi_get_output_type_cap(struct dw_hdmi *hdmi);
 
-bool dw_hdmi_bus_fmt_is_420(struct dw_hdmi *hdmi);
 
 #endif /* __IMX_HDMI_H__ */
