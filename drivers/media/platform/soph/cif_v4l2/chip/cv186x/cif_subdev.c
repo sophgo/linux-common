@@ -759,9 +759,9 @@ static int cif_notifier(struct cvi_cif_dev *dev)
 		return ret;
 	}
 
-	ret = v4l2_async_register_subdev(&dev->sd);
+	// ret = v4l2_async_register_subdev(&dev->sd);
 
-	CIF_PR(CIF_ERROR, "cif register notifier done:%d\n", ret);
+	// CIF_PR(CIF_ERROR, "cif register notifier done:%d\n", ret);
 
 	return ret;
 }
