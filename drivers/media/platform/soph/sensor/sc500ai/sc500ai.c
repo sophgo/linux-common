@@ -238,7 +238,7 @@ static int sc500ai_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
 	struct sc500ai *sc500ai = to_sc500ai(sd);
 	struct v4l2_mbus_framefmt *try_fmt =
-			v4l2_subdev_get_try_format(sd, fh->pad, 0);
+			v4l2_subdev_state_get_format(fh->state, 0);
 
 	mutex_lock(&sc500ai->mutex);
 
@@ -277,7 +277,7 @@ static int g_mbus_config(struct v4l2_subdev *sd, unsigned int pad_id,
 }
 
 static int enum_mbus_code(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_pad_config *cfg,
+			  struct v4l2_subdev_state *sd_state,
 			  struct v4l2_subdev_mbus_code_enum *code)
 {
 	/* Only one bayer order(GRBG) is supported */
@@ -290,7 +290,7 @@ static int enum_mbus_code(struct v4l2_subdev *sd,
 }
 
 static int enum_frame_interval(struct v4l2_subdev *sd,
-			      struct v4l2_subdev_pad_config *cfg,
+			      struct v4l2_subdev_state *sd_state,
 			      struct v4l2_subdev_frame_interval_enum *fie)
 {
 	struct sc500ai *sc500ai = to_sc500ai(sd);
@@ -305,7 +305,7 @@ static int enum_frame_interval(struct v4l2_subdev *sd,
 }
 
 static int enum_frame_size(struct v4l2_subdev *sd,
-			   struct v4l2_subdev_pad_config *cfg,
+			   struct v4l2_subdev_state *sd_state,
 			   struct v4l2_subdev_frame_size_enum *fse)
 {
 	struct sc500ai *sc500ai = to_sc500ai(sd);
@@ -327,7 +327,7 @@ static void update_pad_format(const struct sc500ai_mode *mode, struct v4l2_subde
 }
 
 static int get_pad_format(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_pad_config *cfg,
+			  struct v4l2_subdev_state *sd_state,
 			  struct v4l2_subdev_format *fmt)
 {
 	struct sc500ai *sc500ai = to_sc500ai(sd);
@@ -336,7 +336,7 @@ static int get_pad_format(struct v4l2_subdev *sd,
 
 	mutex_lock(&sc500ai->mutex);
 	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-		framefmt = v4l2_subdev_get_try_format(sd, cfg, fmt->pad);
+		framefmt = v4l2_subdev_state_get_format(sd_state, fmt->pad);
 		fmt->format = *framefmt;
 		ret = -ENOTTY;
 	} else {
@@ -348,7 +348,7 @@ static int get_pad_format(struct v4l2_subdev *sd,
 }
 
 static int set_pad_format(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_pad_config *cfg,
+			  struct v4l2_subdev_state *sd_state,
 			  struct v4l2_subdev_format *fmt)
 {
 	struct sc500ai *sc500ai = to_sc500ai(sd);
@@ -367,7 +367,7 @@ static int set_pad_format(struct v4l2_subdev *sd,
 				      fmt->format.width, fmt->format.height);
 	update_pad_format(mode, fmt);
 	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-		framefmt = v4l2_subdev_get_try_format(sd, cfg, fmt->pad);
+		framefmt = v4l2_subdev_state_get_format(sd_state, fmt->pad);
 		*framefmt = fmt->format;
 	} else {
 		sc500ai->cur_mode = mode;
@@ -912,8 +912,7 @@ static void sc500ai_free_controls(struct sc500ai *sc500ai)
 	mutex_destroy(&sc500ai->mutex);
 }
 
-static int sc500ai_probe(struct i2c_client *client,
-			 const struct i2c_device_id *devid)
+static int sc500ai_probe(struct i2c_client *client)
 {
 	struct sc500ai *sc500ai;
 	struct v4l2_subdev *sd;
@@ -1021,7 +1020,7 @@ static int sc500ai_probe(struct i2c_client *client,
 	snprintf(sd->name, sizeof(sd->name), "cam%d_%s %s",
 		 sc500ai->module_index, "sc500ai", dev_name(sd->dev));
 
-	ret = v4l2_async_register_subdev_sensor_common(sd);
+	ret = v4l2_async_register_subdev_sensor(sd);
 	if (ret < 0) {
 		dev_err(&client->dev, "failed to async subdev:%d\n", ret);
 		goto error_media_entity;
@@ -1049,7 +1048,7 @@ error_handler_free:
 	return ret;
 }
 
-static int sc500ai_remove(struct i2c_client *client)
+static void sc500ai_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct sc500ai *sc500ai = to_sc500ai(sd);
@@ -1067,7 +1066,7 @@ static int sc500ai_remove(struct i2c_client *client)
 
 	dev_info(&client->dev, "sensor_%d remove success\n", sc500ai_probe_index);
 
-	return 0;
+	return;
 }
 
 static const struct of_device_id sc500ai_of_match[] = {

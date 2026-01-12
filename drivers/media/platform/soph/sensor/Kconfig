@@ -9,133 +9,133 @@ config VIDEO_SOPHGO_SENSOR
 	  Sophgo sensor devices.
 
 config SENSOR_V4L2_IMX585
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "imx585 support"
 	default n
 	help
 	  Support for Sensor on the CV186X SoC.
 
 config SENSOR_V4L2_IMX307
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "imx307 support"
 	default n
 	help
 	  Support for Sensor on the CV186X SoC.
 
 config SENSOR_V4L2_IMX327
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "imx327 support"
 	default n
 	help
 	  Support for Sensor on the CV186X SoC.
 
 config SENSOR_V4L2_IMX412
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "imx412 support"
 	default n
 	help
 	  Support for Sensor on the CV186X SoC.
 
 config SENSOR_V4L2_IMX415
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "imx415 support"
 	default n
 	help
 	  Support for Sensor on the CV186X SoC.
 
 config SENSOR_V4L2_IMX900
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "imx900 support"
 	default n
 	help
 	  Support for Sensor on the CV186X SoC.
 
 config SENSOR_V4L2_LT6911
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "lt6911 support"
 	default n
 	help
 	  Support for Sensor on the CV186X SoC.
 
 config SENSOR_V4L2_OS04A10
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "os04a10 support"
 	default n
 	help
 	  Support for Sensor on the CV186X SoC.
 
 config SENSOR_V4L2_OS04E10
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "os04e10 support"
 	default n
 	help
 	  Support for Sensor on the CV186X SoC.
 
 config SENSOR_V4L2_OS08B10
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "os08b10 support"
 	default n
 	help
 	  Support for Sensor on the Athena2 SoC.
 
 config SENSOR_V4L2_GC4653
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "gc4653 support"
 	default n
 	help
 	  Support for Sensor on the CV186X SoC.
 
 config SENSOR_V4L2_GC8613
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "gc8613 support"
 	default n
 	help
 	  Support for Sensor on the CV186X SoC.
 
 config SENSOR_V4L2_PR2100
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "pr2100 support"
 	default n
 	help
 	  Support for Sensor on the CV186X SoC.
 
 config SENSOR_V4L2_PR2020
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "pr2020 support"
 	default n
 	help
 	  Support for Sensor on the CV186X SoC.
 
 config SENSOR_V4L2_AR2020
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "ar2020 support"
 	default n
 	help
 	  Support for Sensor on the CV186X SoC.
 
 config SENSOR_V4L2_NC021
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "nc021 support"
 	default n
 	help
 	  Support for Sensor on the CV186X SoC.
 
 config SENSOR_V4L2_SC020HGS
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "sc020hgs support"
 	default n
 	help
 	  Support for Sensor on the CV186X SoC.
 
 config SENSOR_V4L2_SC233HGS
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "sc233hgs support"
 	default n
 	help
 	  Support for Sensor on the CV186X SoC.
 
 config SENSOR_V4L2_SC500AI
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "sc500ai support"
 	default n
 	help
@@ -143,7 +143,7 @@ config SENSOR_V4L2_SC500AI
 
 
 config SENSOR_V4L2_SC831HAI
-	depends on VIDEO_V4L2 && I2C
+	depends on I2C && VIDEO_DEV
 	tristate "sc831hai support"
 	default n
 	help

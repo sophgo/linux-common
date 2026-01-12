@@ -245,7 +245,7 @@ static int sc233hgs_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
 	struct sc233hgs *sc233hgs = to_sc233hgs(sd);
 	struct v4l2_mbus_framefmt *try_fmt =
-			v4l2_subdev_get_try_format(sd, fh->pad, 0);
+			v4l2_subdev_state_get_format(fh->state, 0);
 
 	mutex_lock(&sc233hgs->mutex);
 
@@ -284,7 +284,7 @@ static int g_mbus_config(struct v4l2_subdev *sd, unsigned int pad_id,
 }
 
 static int enum_mbus_code(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_pad_config *cfg,
+			  struct v4l2_subdev_state *sd_state,
 			  struct v4l2_subdev_mbus_code_enum *code)
 {
 	/* Only one bayer order(GRBG) is supported */
@@ -297,7 +297,7 @@ static int enum_mbus_code(struct v4l2_subdev *sd,
 }
 
 static int enum_frame_interval(struct v4l2_subdev *sd,
-			      struct v4l2_subdev_pad_config *cfg,
+			      struct v4l2_subdev_state *sd_state,
 			      struct v4l2_subdev_frame_interval_enum *fie)
 {
 	struct sc233hgs *sc233hgs = to_sc233hgs(sd);
@@ -312,7 +312,7 @@ static int enum_frame_interval(struct v4l2_subdev *sd,
 }
 
 static int enum_frame_size(struct v4l2_subdev *sd,
-			   struct v4l2_subdev_pad_config *cfg,
+			   struct v4l2_subdev_state *sd_state,
 			   struct v4l2_subdev_frame_size_enum *fse)
 {
 	struct sc233hgs *sc233hgs = to_sc233hgs(sd);
@@ -334,7 +334,7 @@ static void update_pad_format(const struct sc233hgs_mode *mode, struct v4l2_subd
 }
 
 static int get_pad_format(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_pad_config *cfg,
+			  struct v4l2_subdev_state *sd_state,
 			  struct v4l2_subdev_format *fmt)
 {
 	struct sc233hgs *sc233hgs = to_sc233hgs(sd);
@@ -343,7 +343,7 @@ static int get_pad_format(struct v4l2_subdev *sd,
 
 	mutex_lock(&sc233hgs->mutex);
 	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-		framefmt = v4l2_subdev_get_try_format(sd, cfg, fmt->pad);
+		framefmt = v4l2_subdev_state_get_format(sd_state, fmt->pad);
 		fmt->format = *framefmt;
 		ret = -ENOTTY;
 	} else {
@@ -355,7 +355,7 @@ static int get_pad_format(struct v4l2_subdev *sd,
 }
 
 static int set_pad_format(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_pad_config *cfg,
+			  struct v4l2_subdev_state *sd_state,
 			  struct v4l2_subdev_format *fmt)
 {
 	struct sc233hgs *sc233hgs = to_sc233hgs(sd);
@@ -374,7 +374,7 @@ static int set_pad_format(struct v4l2_subdev *sd,
 				      fmt->format.width, fmt->format.height);
 	update_pad_format(mode, fmt);
 	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-		framefmt = v4l2_subdev_get_try_format(sd, cfg, fmt->pad);
+		framefmt = v4l2_subdev_state_get_format(sd_state, fmt->pad);
 		*framefmt = fmt->format;
 	} else {
 		sc233hgs->cur_mode = mode;
@@ -945,8 +945,7 @@ static void sc233hgs_free_controls(struct sc233hgs *sc233hgs)
 	mutex_destroy(&sc233hgs->mutex);
 }
 
-static int sc233hgs_probe(struct i2c_client *client,
-			 const struct i2c_device_id *devid)
+static int sc233hgs_probe(struct i2c_client *client)
 {
 	struct sc233hgs *sc233hgs;
 	struct v4l2_subdev *sd;
@@ -1056,7 +1055,7 @@ static int sc233hgs_probe(struct i2c_client *client,
 	snprintf(sd->name, sizeof(sd->name), "cam%d_%s %s",
 		 sc233hgs->module_index, "sc233hgs", dev_name(sd->dev));
 
-	ret = v4l2_async_register_subdev_sensor_common(sd);
+	ret = v4l2_async_register_subdev_sensor(sd);
 	if (ret < 0) {
 		dev_err(&client->dev, "failed to async subdev:%d\n", ret);
 		goto error_media_entity;
@@ -1084,7 +1083,7 @@ error_handler_free:
 	return ret;
 }
 
-static int sc233hgs_remove(struct i2c_client *client)
+static void sc233hgs_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct sc233hgs *sc233hgs = to_sc233hgs(sd);
@@ -1101,9 +1100,8 @@ static int sc233hgs_remove(struct i2c_client *client)
 	pm_runtime_suspend(&client->dev);
 
 	dev_info(&client->dev, "sensor_%d remove success\n", sc233hgs_probe_index);
-	return 0;
 
-	return 0;
+	return;
 }
 
 static const struct of_device_id sc233hgs_of_match[] = {

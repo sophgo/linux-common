@@ -239,7 +239,7 @@ static int imx415_write_regs(struct imx415 *imx415,
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx415->sd);
 	int ret;
-	u32 i, reg_val;
+	u32 i;
 
 	for (i = 0; i < len; i++) {
 		ret = imx415_write_reg(imx415, regs[i].address, 1,
@@ -260,7 +260,7 @@ static int imx415_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
 	struct imx415 *imx415 = to_imx415(sd);
 	struct v4l2_mbus_framefmt *try_fmt =
-			v4l2_subdev_get_try_format(sd, fh->pad, 0);
+			v4l2_subdev_state_get_format(fh->state, 0);
 
 	mutex_lock(&imx415->mutex);
 
@@ -299,7 +299,7 @@ static int g_mbus_config(struct v4l2_subdev *sd, unsigned int pad_id,
 }
 
 static int enum_mbus_code(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_pad_config *cfg,
+			  struct v4l2_subdev_state *sd_state,
 			  struct v4l2_subdev_mbus_code_enum *code)
 {
 	/* Only one bayer order(GRBG) is supported */
@@ -312,7 +312,7 @@ static int enum_mbus_code(struct v4l2_subdev *sd,
 }
 
 static int enum_frame_interval(struct v4l2_subdev *sd,
-			      struct v4l2_subdev_pad_config *cfg,
+			      struct v4l2_subdev_state *sd_state,
 			      struct v4l2_subdev_frame_interval_enum *fie)
 {
 	struct imx415 *imx415 = to_imx415(sd);
@@ -327,7 +327,7 @@ static int enum_frame_interval(struct v4l2_subdev *sd,
 }
 
 static int enum_frame_size(struct v4l2_subdev *sd,
-			   struct v4l2_subdev_pad_config *cfg,
+			   struct v4l2_subdev_state *sd_state,
 			   struct v4l2_subdev_frame_size_enum *fse)
 {
 	struct imx415 *imx415 = to_imx415(sd);
@@ -349,7 +349,7 @@ static void update_pad_format(const struct imx415_mode *mode, struct v4l2_subdev
 }
 
 static int get_pad_format(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_pad_config *cfg,
+			  struct v4l2_subdev_state *sd_state,
 			  struct v4l2_subdev_format *fmt)
 {
 	struct imx415 *imx415 = to_imx415(sd);
@@ -358,7 +358,7 @@ static int get_pad_format(struct v4l2_subdev *sd,
 
 	mutex_lock(&imx415->mutex);
 	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-		framefmt = v4l2_subdev_get_try_format(sd, cfg, fmt->pad);
+		framefmt = v4l2_subdev_state_get_format(sd_state, fmt->pad);
 		fmt->format = *framefmt;
 		ret = -ENOTTY;
 	} else {
@@ -370,7 +370,7 @@ static int get_pad_format(struct v4l2_subdev *sd,
 }
 
 static int set_pad_format(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_pad_config *cfg,
+			  struct v4l2_subdev_state *sd_state,
 			  struct v4l2_subdev_format *fmt)
 {
 	struct imx415 *imx415 = to_imx415(sd);
@@ -389,7 +389,7 @@ static int set_pad_format(struct v4l2_subdev *sd,
 				      fmt->format.width, fmt->format.height);
 	update_pad_format(mode, fmt);
 	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-		framefmt = v4l2_subdev_get_try_format(sd, cfg, fmt->pad);
+		framefmt = v4l2_subdev_state_get_format(sd_state, fmt->pad);
 		*framefmt = fmt->format;
 	} else {
 		imx415->cur_mode = mode;
@@ -406,11 +406,11 @@ static void imx415_standby(struct imx415 *imx415)
 	imx415_write_reg(imx415, 0x3002, REG_VALUE_08BIT, 0x01);
 }
 
-static void imx415_restart(struct imx415 *imx415)
-{
-	imx415_write_reg(imx415, 0x3000, REG_VALUE_08BIT, 0x00);
-	imx415_write_reg(imx415, 0x3002, REG_VALUE_08BIT, 0x00);
-}
+// static void imx415_restart(struct imx415 *imx415)
+// {
+// 	imx415_write_reg(imx415, 0x3000, REG_VALUE_08BIT, 0x00);
+// 	imx415_write_reg(imx415, 0x3002, REG_VALUE_08BIT, 0x00);
+// }
 
 /* Start streaming */
 static int start_streaming(struct imx415 *imx415)
@@ -959,8 +959,7 @@ static void imx415_free_controls(struct imx415 *imx415)
 	mutex_destroy(&imx415->mutex);
 }
 
-static int imx415_probe(struct i2c_client *client,
-			 const struct i2c_device_id *devid)
+static int imx415_probe(struct i2c_client *client)
 {
 	struct imx415 *imx415;
 	struct v4l2_subdev *sd;
@@ -1068,7 +1067,7 @@ static int imx415_probe(struct i2c_client *client,
 	snprintf(sd->name, sizeof(sd->name), "cam%d_%s %s",
 		 imx415->module_index, "imx415", dev_name(sd->dev));
 
-	ret = v4l2_async_register_subdev_sensor_common(sd);
+	ret = v4l2_async_register_subdev_sensor(sd);
 	if (ret < 0) {
 		dev_err(&client->dev, "failed to async subdev:%d\n", ret);
 		goto error_media_entity;
@@ -1096,7 +1095,7 @@ error_handler_free:
 	return ret;
 }
 
-static int imx415_remove(struct i2c_client *client)
+static void imx415_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct imx415 *imx415 = to_imx415(sd);
@@ -1114,7 +1113,7 @@ static int imx415_remove(struct i2c_client *client)
 
 	dev_info(&client->dev, "sensor_%d remove success\n", imx415_probe_index);
 
-	return 0;
+	return;
 }
 
 static const struct of_device_id imx415_of_match[] = {
@@ -1145,7 +1144,6 @@ static struct i2c_driver imx415_i2c_driver = {
 
 static int __init sensor_mod_init(void)
 {
-	int i;
 	pr_info("== imx415 mod add 24M ==\n");
 
 	return i2c_add_driver(&imx415_i2c_driver);

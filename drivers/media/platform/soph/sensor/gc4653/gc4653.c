@@ -217,7 +217,7 @@ static int gc4653_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
 	struct gc4653 *gc4653 = to_gc4653(sd);
 	struct v4l2_mbus_framefmt *try_fmt =
-			v4l2_subdev_get_try_format(sd, fh->pad, 0);
+			v4l2_subdev_state_get_format(fh->state, 0);
 
 	mutex_lock(&gc4653->mutex);
 
@@ -256,7 +256,7 @@ static int g_mbus_config(struct v4l2_subdev *sd, unsigned int pad_id,
 }
 
 static int enum_mbus_code(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_pad_config *cfg,
+			  struct v4l2_subdev_state *sd_state,
 			  struct v4l2_subdev_mbus_code_enum *code)
 {
 	/* Only one bayer order(GRBG) is supported */
@@ -269,7 +269,7 @@ static int enum_mbus_code(struct v4l2_subdev *sd,
 }
 
 static int enum_frame_interval(struct v4l2_subdev *sd,
-			      struct v4l2_subdev_pad_config *cfg,
+			      struct v4l2_subdev_state *sd_state,
 			      struct v4l2_subdev_frame_interval_enum *fie)
 {
 	struct gc4653 *gc4653 = to_gc4653(sd);
@@ -284,7 +284,7 @@ static int enum_frame_interval(struct v4l2_subdev *sd,
 }
 
 static int enum_frame_size(struct v4l2_subdev *sd,
-			   struct v4l2_subdev_pad_config *cfg,
+			   struct v4l2_subdev_state *sd_state,
 			   struct v4l2_subdev_frame_size_enum *fse)
 {
 	struct gc4653 *gc4653 = to_gc4653(sd);
@@ -306,7 +306,7 @@ static void update_pad_format(const struct gc4653_mode *mode, struct v4l2_subdev
 }
 
 static int get_pad_format(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_pad_config *cfg,
+			  struct v4l2_subdev_state *sd_state,
 			  struct v4l2_subdev_format *fmt)
 {
 	struct gc4653 *gc4653 = to_gc4653(sd);
@@ -315,7 +315,7 @@ static int get_pad_format(struct v4l2_subdev *sd,
 
 	mutex_lock(&gc4653->mutex);
 	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-		framefmt = v4l2_subdev_get_try_format(sd, cfg, fmt->pad);
+		framefmt = v4l2_subdev_state_get_format(sd_state, fmt->pad);
 		fmt->format = *framefmt;
 		ret = -ENOTTY;
 	} else {
@@ -327,7 +327,7 @@ static int get_pad_format(struct v4l2_subdev *sd,
 }
 
 static int set_pad_format(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_pad_config *cfg,
+			  struct v4l2_subdev_state *sd_state,
 			  struct v4l2_subdev_format *fmt)
 {
 	struct gc4653 *gc4653 = to_gc4653(sd);
@@ -346,7 +346,7 @@ static int set_pad_format(struct v4l2_subdev *sd,
 				      fmt->format.width, fmt->format.height);
 	update_pad_format(mode, fmt);
 	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-		framefmt = v4l2_subdev_get_try_format(sd, cfg, fmt->pad);
+		framefmt = v4l2_subdev_state_get_format(sd_state, fmt->pad);
 		*framefmt = fmt->format;
 	} else {
 		gc4653->cur_mode = mode;
@@ -362,10 +362,10 @@ static void gc4653_standby(struct gc4653 *gc4653)
 	gc4653_write_reg(gc4653, 0x0100, REG_VALUE_08BIT, 0x00);
 }
 
-static void gc4653_restart(struct gc4653 *gc4653)
-{
-	gc4653_write_reg(gc4653, 0x0100, REG_VALUE_08BIT, 0x01);
-}
+// static void gc4653_restart(struct gc4653 *gc4653)
+// {
+// 	gc4653_write_reg(gc4653, 0x0100, REG_VALUE_08BIT, 0x01);
+// }
 
 /* Start streaming */
 static int start_streaming(struct gc4653 *gc4653)
@@ -912,8 +912,7 @@ static void gc4653_free_controls(struct gc4653 *gc4653)
 	mutex_destroy(&gc4653->mutex);
 }
 
-static int gc4653_probe(struct i2c_client *client,
-			 const struct i2c_device_id *devid)
+static int gc4653_probe(struct i2c_client *client)
 {
 	struct gc4653 *gc4653;
 	struct v4l2_subdev *sd;
@@ -1023,7 +1022,7 @@ static int gc4653_probe(struct i2c_client *client,
 	snprintf(sd->name, sizeof(sd->name), "cam%d_%s %s",
 		 gc4653->module_index, "gc4653", dev_name(sd->dev));
 
-	ret = v4l2_async_register_subdev_sensor_common(sd);
+	ret = v4l2_async_register_subdev_sensor(sd);
 	if (ret < 0) {
 		dev_err(&client->dev, "failed to async subdev:%d\n", ret);
 		goto error_media_entity;
@@ -1051,7 +1050,7 @@ error_handler_free:
 	return ret;
 }
 
-static int gc4653_remove(struct i2c_client *client)
+static void gc4653_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct gc4653 *gc4653 = to_gc4653(sd);
@@ -1068,7 +1067,7 @@ static int gc4653_remove(struct i2c_client *client)
 	pm_runtime_suspend(&client->dev);
 
 	dev_info(&client->dev, "sensor_%d remove success\n", gc4653_probe_index);
-	return 0;
+	return;
 }
 
 static const struct of_device_id gc4653_of_match[] = {
