@@ -25,6 +25,10 @@
 #include <net/xdp.h>
 #include <uapi/linux/bpf.h>
 
+/* define Maxio Phyid s*/
+#define MAXIO_PHY_MAE0621A_Q2C_ID 0x7b744411
+#define MAXIO_PHY_MAE0621A_Q3C_ID 0x7b744412
+
 struct stmmac_resources {
 	void __iomem *addr;
 	u8 mac[ETH_ALEN];

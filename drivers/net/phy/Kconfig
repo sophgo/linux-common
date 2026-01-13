@@ -363,6 +363,11 @@ config REALTEK_PHY
 	help
 	  Supports the Realtek 821x PHY.
 
+config MAXIO_PHY
+	tristate "MAXIO PHYs"
+	help
+	  Supports the Maxio MAExxxx PHY.
+
 config RENESAS_PHY
 	tristate "Renesas PHYs"
 	help
