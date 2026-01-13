@@ -364,7 +364,7 @@ config DRM_SCHED
 
 source "drivers/gpu/drm/cvitek/Kconfig"
 
-# source "drivers/gpu/drm/ms912x/Kconfig"
+source "drivers/gpu/drm/ms912x/Kconfig"
 
 source "drivers/gpu/drm/i2c/Kconfig"
 

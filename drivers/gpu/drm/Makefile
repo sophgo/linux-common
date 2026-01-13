@@ -227,4 +227,4 @@ obj-$(CONFIG_DRM_LOONGSON) += loongson/
 obj-$(CONFIG_DRM_POWERVR) += imagination/
 
 obj-$(CONFIG_DRM_CVITEK) +=cvitek/
-# obj-$(CONFIG_DRM_USB_TO_HDMI) +=ms912x/
+obj-$(CONFIG_DRM_USB_TO_HDMI) +=ms912x/

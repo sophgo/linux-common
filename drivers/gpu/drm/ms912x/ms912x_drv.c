@@ -18,6 +18,7 @@
 #include <drm/drm_fb_dma_helper.h>
 #include <drm/drm_gem_dma_helper.h>
 #include <linux/dma-buf.h>
+#include <drm/drm_fbdev_dma.h>
 
 #include "ms912x.h"
 #include "usb_hal_interface.h"
@@ -126,6 +127,8 @@ static int ms912x_update_frame(struct ms912x_device *ms912x, struct drm_plane_st
 	struct drm_framebuffer *fb = state->fb;
 	struct drm_gem_dma_object *dma_obj = drm_fb_dma_get_gem_obj(fb, 0);
 	struct dma_buf_attachment *import_attach = dma_obj->base.import_attach;
+	struct iosys_map map;
+	struct drm_gem_shmem_object *shmem;
 	int ret = 0;
 	void *vaddr;
 	int len = fb->pitches[0] * (state->src_h >> 16);
@@ -137,15 +140,18 @@ static int ms912x_update_frame(struct ms912x_device *ms912x, struct drm_plane_st
 			return ret;
 	}
 
-	vaddr = drm_gem_shmem_vmap(fb->obj[0]);
-	if (IS_ERR(vaddr)) {
+	shmem = to_drm_gem_shmem_obj(fb->obj[0]);
+
+	ret = drm_gem_shmem_vmap(shmem, &map);
+	if (ret) {
 		DRM_ERROR("failed to vmap fb\n");
-		goto out_dma_buf_end_cpu_access;
+		return ret;
 	}
+	vaddr = map.vaddr;
 
 	usb_hal_update_frame(ms912x->hal, vaddr, fb->pitches[0], len, DRM_FORMAT_ARGB8888, 0);
 
-	drm_gem_shmem_vunmap(fb->obj[0], vaddr);
+	drm_gem_shmem_vunmap(shmem, &map);
 
 out_dma_buf_end_cpu_access:
 	if (import_attach) {
@@ -176,7 +182,7 @@ static const struct drm_simple_display_pipe_funcs ms912x_pipe_funcs = {
 	.check = ms912x_pipe_check,
 	.mode_valid = ms912x_pipe_mode_valid,
 	.update = ms912x_pipe_update,
-	.prepare_fb = drm_gem_fb_simple_display_pipe_prepare_fb,
+	// .prepare_fb = drm_gem_fb_simple_display_pipe_prepare_fb,
 };
 
 static const uint32_t ms912x_pipe_formats[] = {
@@ -251,7 +257,7 @@ static int ms912x_usb_probe(struct usb_interface *interface,
 	if (ret)
 		goto err_destroy_usb_hal;
 
-	drm_fbdev_generic_setup(dev, 0);
+	drm_fbdev_dma_setup(dev, 0);
 
 	return 0;
 
@@ -306,4 +312,5 @@ static struct usb_driver ms912x_driver = {
 	.id_table = id_table,
 };
 module_usb_driver(ms912x_driver);
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL");
