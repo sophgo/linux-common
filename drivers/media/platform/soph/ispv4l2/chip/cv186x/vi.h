@@ -1168,15 +1168,13 @@ u16 c_lut_b_lut[] = {
 };
 #endif
 /*********************************************************************************************/
-static int count;
 
 /* control internal patgen
  *
  * 1: enable
  * 0: disable
  */
-static int csi_patgen_en[ISP_PRERAW_MAX] = {0, 0};
-module_param_array(csi_patgen_en, int, &count, 0644);
+extern int csi_patgen_en[ISP_PRERAW_MAX];
 
 extern int burst_i2c_en;
 

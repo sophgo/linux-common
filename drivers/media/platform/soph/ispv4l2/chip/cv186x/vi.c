@@ -128,6 +128,7 @@ static struct sop_vip_fmt vip_formats[] = {
 	.plane_sub_v = 1,
 	},
 };
+static int count;
 
 int line_spliter_en;
 module_param(line_spliter_en, int, 0644);
@@ -149,6 +150,9 @@ module_param_array(tuning_dis, int, &count, 0664);
 
 int burst_i2c_en;
 module_param(burst_i2c_en, int, 0644);
+
+int csi_patgen_en[ISP_PRERAW_MAX] = {0, 0};
+module_param_array(csi_patgen_en, int, &count, 0644);
 
 u16 ltm_g_lut[] = {
 0, 256, 512, 768, 1024, 1280, 1536,  1792,  2048,  2304,  2560,  2816,  3072,  3328,  3584,  3840,  4096,
