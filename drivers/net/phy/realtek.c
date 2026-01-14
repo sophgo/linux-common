@@ -13,6 +13,7 @@
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/clk.h>
+#include <asm/io.h>
 
 #define RTL821x_PHYSR				0x11
 #define RTL821x_PHYSR_DUPLEX			BIT(13)
@@ -99,6 +100,13 @@
 
 #define RTL8211F_LED_COUNT			3
 
+#define RTL8211F_PHYSR_P_A43	(0x1a)
+#define RTL8211F_PHY_1000M		(0x20)
+#define RTL8211F_PHY_100M		(0x10)
+#define RTL8211F_PHY_10M		(0x00)
+#define RTL8211F_PHY_DUPLEX		(1 << 3)
+#define RTL8211F_PHY_SPEED		(3 << 4)
+
 MODULE_DESCRIPTION("Realtek PHY driver");
 MODULE_AUTHOR("Johnson Leung");
 MODULE_LICENSE("GPL");
@@ -157,6 +165,25 @@ static int rtl821x_probe(struct phy_device *phydev)
 
 	phydev->priv = priv;
 
+	return 0;
+}
+
+static int rtl8211f_probe(struct phy_device *phydev)
+{
+#if IS_ENABLED(CONFIG_ARCH_CV186X)
+	u32 sram_oem;
+	void __iomem *oem_addess;
+
+	oem_addess = ioremap(0x5207F80, 4);
+	if (!oem_addess) {
+		pr_err("ioremap failed!!!");
+	} else {
+		sram_oem = readl(oem_addess);
+		phydev->phy_led_flag = (char)((sram_oem >> 24) & 0xff);
+		//printk("sram_oem = %x, phy_led_flag = %x\n", sram_oem, phydev->phy_led_flag);
+		iounmap(oem_addess);
+	}
+#endif
 	return 0;
 }
 
@@ -369,6 +396,88 @@ static int rtl8211c_config_init(struct phy_device *phydev)
 }
 
 static int rtl8211f_config_init(struct phy_device *phydev)
+{
+	struct device *dev = &phydev->mdio.dev;
+	u16 val_txdly, val_rxdly;
+	u16 val;
+	int ret;
+#if IS_ENABLED(CONFIG_ARCH_CV186X)
+	phy_modify_paged_changed(phydev, 0xa43, 0x19, 0x21, 0x0);
+	phy_modify_paged_changed(phydev, 0x0, 0x0, 0x0, 0x8000);	
+#endif
+	val = RTL8211F_ALDPS_ENABLE | RTL8211F_ALDPS_PLL_OFF | RTL8211F_ALDPS_XTAL_OFF;
+	phy_modify_paged_changed(phydev, 0xa43, RTL8211F_PHYCR1, val, val);
+
+	switch (phydev->interface) {
+	case PHY_INTERFACE_MODE_RGMII:
+		val_txdly = 0;
+		val_rxdly = 0;
+		break;
+
+	case PHY_INTERFACE_MODE_RGMII_RXID:
+		val_txdly = 0;
+		val_rxdly = RTL8211F_RX_DELAY;
+		break;
+
+	case PHY_INTERFACE_MODE_RGMII_TXID:
+		val_txdly = RTL8211F_TX_DELAY;
+		val_rxdly = 0;
+		break;
+
+	case PHY_INTERFACE_MODE_RGMII_ID:
+		val_txdly = RTL8211F_TX_DELAY;
+		val_rxdly = RTL8211F_RX_DELAY;
+		break;
+
+	default: /* the rest of the modes imply leaving delay as is. */
+		return 0;
+	}
+
+	ret = phy_modify_paged_changed(phydev, 0xd08, 0x11, RTL8211F_TX_DELAY,
+				       val_txdly);
+	if (ret < 0) {
+		dev_err(dev, "Failed to update the TX delay register\n");
+		return ret;
+	} else if (ret) {
+		dev_dbg(dev,
+			"%s 2ns TX delay (and changing the value from pin-strapping RXD1 or the bootloader)\n",
+			val_txdly ? "Enabling" : "Disabling");
+	} else {
+		dev_dbg(dev,
+			"2ns TX delay was already %s (by pin-strapping RXD1 or bootloader configuration)\n",
+			val_txdly ? "enabled" : "disabled");
+	}
+
+	ret = phy_modify_paged_changed(phydev, 0xd08, 0x15, RTL8211F_RX_DELAY,
+				       val_rxdly);
+	if (ret < 0) {
+		dev_err(dev, "Failed to update the RX delay register\n");
+		return ret;
+	} else if (ret) {
+		dev_dbg(dev,
+			"%s 2ns RX delay (and changing the value from pin-strapping RXD0 or the bootloader)\n",
+			val_rxdly ? "Enabling" : "Disabling");
+	} else {
+		dev_dbg(dev,
+			"2ns RX delay was already %s (by pin-strapping RXD0 or bootloader configuration)\n",
+			val_rxdly ? "enabled" : "disabled");
+	}
+#ifdef CONFIG_BOARD_fpga
+	phydev->autoneg = AUTONEG_DISABLE;
+	phydev->speed = SPEED_100;
+	phydev->duplex = DUPLEX_FULL;
+#endif
+#if IS_ENABLED(CONFIG_ARCH_CV186X)
+	//printk("phy_led_flag = %x\n", phydev->phy_led_flag);
+	if (phydev->phy_led_flag == 0x1)
+		ret = phy_modify_paged_changed(phydev, 0xd04, 0x10, 0xffff, 0xC00B);
+	else
+		ret = phy_modify_paged_changed(phydev, 0xd04, 0x10, 0xffff, 0x820B);
+#endif
+	return 0;
+}
+
+static int rtl8211fvd_config_init(struct phy_device *phydev)
 {
 	struct rtl821x_priv *priv = phydev->priv;
 	struct device *dev = &phydev->mdio.dev;
@@ -704,6 +813,34 @@ static int rtlgen_read_status(struct phy_device *phydev)
 
 	rtlgen_decode_speed(phydev, val);
 
+	return 0;
+}
+
+static int rtl8211f_read_status(struct phy_device *phydev)
+{
+	int err = genphy_read_status(phydev);
+	if (err)
+		return err;
+
+	int	physr_p_a43 = phy_read_paged(phydev, 0xa43, RTL8211F_PHYSR_P_A43);
+
+	if((physr_p_a43 & RTL8211F_PHY_SPEED) == RTL8211F_PHY_1000M) {
+		phydev->speed = SPEED_1000;
+	} else if ((physr_p_a43 & RTL8211F_PHY_SPEED) == RTL8211F_PHY_100M) {
+		phydev->speed = SPEED_100;
+	} else if ((physr_p_a43 & RTL8211F_PHY_SPEED) == RTL8211F_PHY_10M) {
+		phydev->speed = SPEED_10;
+	}
+
+	if(physr_p_a43 & RTL8211F_PHY_DUPLEX) {
+		phydev->duplex = DUPLEX_FULL;
+	} else {
+		phydev->duplex = DUPLEX_HALF;
+	}
+
+	if (phydev->speed != SPEED_1000) {
+		linkmode_clear_bit(ETHTOOL_LINK_MODE_1000baseT_Full_BIT, phydev->lp_advertising);
+	}
 	return 0;
 }
 
@@ -1336,9 +1473,9 @@ static struct phy_driver realtek_drvs[] = {
 	}, {
 		PHY_ID_MATCH_EXACT(0x001cc916),
 		.name		= "RTL8211F Gigabit Ethernet",
-		.probe		= rtl821x_probe,
+		.probe		= rtl8211f_probe,
 		.config_init	= &rtl8211f_config_init,
-		.read_status	= rtlgen_read_status,
+		.read_status	= rtl8211f_read_status,
 		.config_intr	= &rtl8211f_config_intr,
 		.handle_interrupt = rtl8211f_handle_interrupt,
 		.suspend	= rtl821x_suspend,
@@ -1353,7 +1490,7 @@ static struct phy_driver realtek_drvs[] = {
 		PHY_ID_MATCH_EXACT(RTL_8211FVD_PHYID),
 		.name		= "RTL8211F-VD Gigabit Ethernet",
 		.probe		= rtl821x_probe,
-		.config_init	= &rtl8211f_config_init,
+		.config_init	= &rtl8211fvd_config_init,
 		.read_status	= rtlgen_read_status,
 		.config_intr	= &rtl8211f_config_intr,
 		.handle_interrupt = rtl8211f_handle_interrupt,

@@ -786,6 +786,10 @@ struct phy_device {
 	/* MACsec management functions */
 	const struct macsec_ops *macsec_ops;
 #endif
+
+#if IS_ENABLED(CONFIG_ARCH_CV186X)
+	char phy_led_flag;
+#endif
 };
 
 /* Generic phy_device::dev_flags */

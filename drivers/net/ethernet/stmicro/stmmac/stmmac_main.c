@@ -88,7 +88,7 @@ MODULE_PARM_DESC(phyaddr, "Physical device address");
 #define STMMAC_XDP_TX		BIT(1)
 #define STMMAC_XDP_REDIRECT	BIT(2)
 
-static int flow_ctrl = FLOW_AUTO;
+static int flow_ctrl = FLOW_OFF;
 module_param(flow_ctrl, int, 0644);
 MODULE_PARM_DESC(flow_ctrl, "Flow control ability [on/off]");
 
@@ -8030,6 +8030,12 @@ int stmmac_resume(struct device *dev)
 
 	stmmac_free_tx_skbufs(priv);
 	stmmac_clear_descriptors(priv, &priv->dma_conf);
+
+	if (ndev->phydev->drv->config_init) {
+		if (ndev->phydev->phy_id == MAXIO_PHY_MAE0621A_Q2C_ID || ndev->phydev->phy_id == MAXIO_PHY_MAE0621A_Q3C_ID) {
+			ndev->phydev->drv->config_init(ndev->phydev);
+		}
+	}
 
 	ret = stmmac_hw_setup(ndev, false);
 	if (ret < 0) {

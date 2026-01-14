@@ -167,6 +167,10 @@
 #define YT8531_LDO_VOL_3V3			0x0
 #define YT8531_LDO_VOL_1V8			0x2
 
+#define YTPHY_LED0_CONFIG_REG 0xA00C
+#define YTPHY_LED1_CONFIG_REG 0xA00D
+#define YTPHY_LED2_CONFIG_REG 0xA00E
+
 /* 1b0 disable 1.9ns rxc clock delay  *default*
  * 1b1 enable 1.9ns rxc clock delay
  */
@@ -919,6 +923,25 @@ static int ytphy_rgmii_clk_delay_config_with_lock(struct phy_device *phydev)
 	phy_unlock_mdio_bus(phydev);
 
 	return ret;
+}
+
+static void ytphy_led_config(struct phy_device *phydev)
+{
+	struct device_node *node = phydev->mdio.dev.of_node;
+	int led0_config, led1_config, led2_config;
+
+	if (of_property_read_u32(node, "led0_config", &led0_config))
+		led0_config = 0;
+
+	if (of_property_read_u32(node, "led1_config", &led1_config))
+		led1_config = 0;
+
+	if (of_property_read_u32(node, "led2_config", &led2_config))
+		led2_config = 0;
+
+	ytphy_write_ext_with_lock(phydev, YTPHY_LED0_CONFIG_REG, led0_config);
+	ytphy_write_ext_with_lock(phydev, YTPHY_LED1_CONFIG_REG, led1_config);
+	ytphy_write_ext_with_lock(phydev, YTPHY_LED2_CONFIG_REG, led2_config);
 }
 
 /**
@@ -1711,6 +1734,8 @@ static int yt8531_config_init(struct phy_device *phydev)
 	ret = yt8531_set_ds(phydev);
 	if (ret < 0)
 		return ret;
+
+	ytphy_led_config(phydev);
 
 	return 0;
 }

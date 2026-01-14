@@ -171,7 +171,9 @@ static void bm_dwmac_probe_config_dt(struct platform_device *pdev, struct plat_s
 	plat->has_gmac4 = 1;
 	plat->has_gmac = 0;
 	// plat->tso_en = 1;
+	plat->flags |= STMMAC_FLAG_TSO_EN;
 	plat->pmt = 0;
+	plat->flags |= STMMAC_FLAG_SPH_DISABLE;
 	// plat->sph_disable = 1;
 }
 
