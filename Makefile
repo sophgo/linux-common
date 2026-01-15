@@ -2,7 +2,7 @@
 VERSION = 6
 PATCHLEVEL = 12
 SUBLEVEL = 62
-EXTRAVERSION =
+EXTRAVERSION = $(shell git rev-parse --short HEAD)
 NAME = Baby Opossum Posse
 
 # *DOCUMENTATION*
