@@ -17,6 +17,7 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <linux/thermal.h>
+#include "thermal_core.h"
 #include <linux/types.h>
 #include <linux/limits.h>
 
@@ -488,12 +489,15 @@ static int cv186x_thermctl_get_trend(struct thermal_zone_device *tz,
 	struct cv186x_thermal_zone *zone = thermal_zone_device_priv(tz);
 	static int last_temp[4] = {INT_MIN, INT_MIN, INT_MIN, INT_MIN};
 	int temp, hyst = 0;
-	int ret;
 
-	ret = thermal_zone_get_temp(tz, &temp);
-	if (ret)
-		return ret;
-
+	/*
+	 * In Linux 6.12, get_trend callback is called within
+	 * __thermal_zone_device_update() which already holds tz->lock
+	 * and has updated tz->temperature. So we can directly use
+	 * tz->temperature instead of calling thermal_zone_get_temp()
+	 * to avoid deadlock.
+	 */
+	temp = tz->temperature;
 	hyst = trip->hysteresis;
 
 	if (temp > trip->temperature) {
