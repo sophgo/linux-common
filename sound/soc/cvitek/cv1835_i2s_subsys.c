@@ -329,7 +329,7 @@ static int i2s_subsys_probe(struct platform_device *pdev)
         }
 	cv1835_set_mclk(audio_clk);
 	aud_clk_enable();
-	aud_clk_disable();
+//	aud_clk_disable();
 
 #if defined(CONFIG_ARCH_CV186X)
 #if defined(CONFIG_SND_SOC_CV1835PDM)

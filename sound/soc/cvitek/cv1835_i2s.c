@@ -262,27 +262,18 @@ static void i2s_stop(struct cvi_i2s_dev *dev,
 		dev_err(dev->dev, "WARNING!!! I2S SHOULD NOT be in OFF state\n");
 }
 
-// static int cvi_i2s_dai_probe(struct snd_soc_dai *cpu_dai)
-// {
-// 	struct cvi_i2s_dev *dev = snd_soc_dai_get_drvdata(cpu_dai);
+static int cvi_i2s_dai_probe(struct snd_soc_dai *cpu_dai)
+{
+	struct cvi_i2s_dev *dev = snd_soc_dai_get_drvdata(cpu_dai);
 
-// 	dev_dbg(cpu_dai->dev, "%s start *cpu_dai = %p name = %s\n", __func__, cpu_dai, cpu_dai->name);
-// 	cpu_dai->playback_dma_data = &dev->play_dma_data;
-// 	cpu_dai->capture_dma_data = &dev->capture_dma_data;
+	dev_err(cpu_dai->dev, "%s start *cpu_dai = %p name = %s\n", __func__, cpu_dai, cpu_dai->name);
 
-// 	if (!cpu_dai->playback_dma_data) {
-// 		dev_err(cpu_dai->dev, "%s playback_dma_data == NULL\n", __func__);
-// 	}
+	snd_soc_dai_dma_data_set_playback(cpu_dai, &dev->play_dma_data);
+	snd_soc_dai_dma_data_set_capture(cpu_dai, &dev->capture_dma_data);
+	dev_err(cpu_dai->dev, "%s end cpu_dai init dma data finish\n", __func__);
 
-// 	if (!cpu_dai->capture_dma_data) {
-// 		dev_err(cpu_dai->dev, "%s capture_dma_data == NULL\n", __func__);
-// 	}
-
-// 	dev_dbg(cpu_dai->dev, "%s end cpu_dai->playback_dma_data = %p\n", __func__, cpu_dai->playback_dma_data);
-
-// 	return 0;
-
-// }
+	return 0;
+}
 
 static int cvi_i2s_startup(struct snd_pcm_substream *substream,
 			   struct snd_soc_dai *cpu_dai)
@@ -791,11 +782,11 @@ static int cvi_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int fmt)
 	dev_dbg(dev->dev, "%s, fmt=0x%08x\n", __func__, fmt);
 
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
-	case SND_SOC_DAIFMT_CBM_CFM: /* Set codec to Master mode, so I2S IP need to be Slave mode */
+	case SND_SOC_DAIFMT_CBS_CFS: /* Set codec to Master mode, so I2S IP need to be Slave mode */
 		blk_mode_setting |= SLAVE_MODE;
 		dev->role = SLAVE_MODE;
 		break;
-	case SND_SOC_DAIFMT_CBS_CFS: /* Set codec to Slave mode, so I2S IP need to be Master mode */
+	case SND_SOC_DAIFMT_CBM_CFM: /* Set codec to Slave mode, so I2S IP need to be Master mode */
 		blk_mode_setting |= MASTER_MODE;
 		dev->role = MASTER_MODE;
 		break;
@@ -942,6 +933,7 @@ static int cvi_i2s_set_tdm_slot(struct snd_soc_dai *cpu_dai, unsigned int tx_mas
 }
 
 static struct snd_soc_dai_ops cvi_i2s_dai_ops = {
+	.probe      = cvi_i2s_dai_probe,
 	.startup	= cvi_i2s_startup,
 	.shutdown	= cvi_i2s_shutdown,
 	.hw_params	= cvi_i2s_hw_params,
