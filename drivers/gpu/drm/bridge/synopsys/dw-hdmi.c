@@ -4293,7 +4293,8 @@ struct dw_hdmi *dw_hdmi_probe(struct platform_device *pdev,
 		pdevinfo.data = &audio;
 		pdevinfo.size_data = sizeof(audio);
 		pdevinfo.dma_mask = DMA_BIT_MASK(64);
-		hdmi->audio = platform_device_register_full(&pdevinfo);
+		// Needs to be fixed. It's temporarily commented out for video display.
+		// hdmi->audio = platform_device_register_full(&pdevinfo);
 	}
 #if 0
 	else if (config0 & HDMI_CONFIG0_I2S) {
