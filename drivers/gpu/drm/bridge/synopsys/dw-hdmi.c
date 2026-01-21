@@ -30,6 +30,7 @@
 #include <drm/drm_print.h>
 #include <drm/drm_probe_helper.h>
 #include <drm//display/drm_scdc_helper.h>
+#include <drm/display/drm_hdmi_helper.h>
 
 #include "dw-hdmi-hdcp.h"
 #include "dw-hdmi-audio.h"
@@ -258,7 +259,7 @@ struct dw_hdmi {
 
 static DEFINE_RAW_SPINLOCK(__io_lock);
 
-void _reg_write_mask(void __iomem *addr, u32 mask, u32 data)
+static void _reg_write_mask(void __iomem *addr, u32 mask, u32 data)
 {
 	unsigned long flags;
 	u32 value;
@@ -2076,9 +2077,9 @@ static void hdmi_config_drm_infoframe(struct dw_hdmi *hdmi,
 	hdmi_modb(hdmi, HDMI_FC_PACKET_TX_EN_DRM_DISABLE,
 		  HDMI_FC_PACKET_TX_EN_DRM_MASK, HDMI_FC_PACKET_TX_EN);
 
-	// err = drm_hdmi_infoframe_set_hdr_metadata(&frame, conn_state);
-	// if (err < 0)
-	// 	return;
+	err = drm_hdmi_infoframe_set_hdr_metadata(&frame, conn_state);
+	if (err < 0)
+		return;
 
 	err = hdmi_drm_infoframe_pack(&frame, buffer, sizeof(buffer));
 	if (err < 0) {
