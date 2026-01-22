@@ -88,7 +88,7 @@ static void sdvt_can_clean(struct net_device *net)
 
 		net->stats.tx_errors++;
 
-		can_free_echo_skb(cdev->net, putidx);
+		can_free_echo_skb(cdev->net, putidx, NULL);
 		cdev->tx_skb = NULL;
 	}
 }
@@ -422,8 +422,7 @@ static int sdvt_can_dev_setup(struct sdvt_can_classdev *sdvt_can_dev)
 	struct net_device *dev = sdvt_can_dev->net;
 
 	if (!sdvt_can_dev->is_peripheral)
-		netif_napi_add(dev, &sdvt_can_dev->napi,
-			       sdvt_can_poll, 128);
+		netif_napi_add(dev, &sdvt_can_dev->napi, sdvt_can_poll);
 
 	sdvt_can_dev->can.do_set_mode = sdvt_can_set_mode;
 	sdvt_can_dev->can.ctrlmode_supported = CAN_CTRLMODE_LOOPBACK |
@@ -480,7 +479,6 @@ static int sdvt_can_close(struct net_device *dev)
 	}
 
 	close_candev(dev);
-	can_led_event(dev, CAN_LED_EVENT_STOP);
 
 	return 0;
 }
@@ -658,7 +656,6 @@ int sdvt_can_class_register(struct sdvt_can_classdev *sdvt_can_dev)
 		goto clk_disable;
 	}
 
-	devm_can_led_init(sdvt_can_dev->net);
 	of_can_transceiver(sdvt_can_dev->net);
 
 	dev_info(sdvt_can_dev->dev, "%s device registered (irq=%d, version=%d)\n",

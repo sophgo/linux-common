@@ -7,7 +7,6 @@
 #define _CAN_SDVT_CAN_H_
 
 #include <linux/can/core.h>
-#include <linux/can/led.h>
 #include <linux/completion.h>
 #include <linux/device.h>
 #include <linux/dma-mapping.h>

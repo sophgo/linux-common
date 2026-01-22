@@ -126,7 +126,7 @@ static __maybe_unused int sdvt_can_resume(struct device *dev)
 	return sdvt_can_class_resume(dev);
 }
 
-static int sdvt_can_plat_remove(struct platform_device *pdev)
+static void sdvt_can_plat_remove(struct platform_device *pdev)
 {
 	struct net_device *dev = platform_get_drvdata(pdev);
 	struct sdvt_can_classdev *sdvt_can_class = netdev_priv(dev);
@@ -136,8 +136,6 @@ static int sdvt_can_plat_remove(struct platform_device *pdev)
 	sdvt_can_class_free_dev(sdvt_can_class->net);
 
 	platform_set_drvdata(pdev, NULL);
-
-	return 0;
 }
 
 static int __maybe_unused sdvt_can_runtime_suspend(struct device *dev)
