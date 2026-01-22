@@ -85,3 +85,9 @@ endif
 
 # for cleaning
 subdir- += vdso vdso32
+
+ifeq ($(CONFIG_ARCH_CVITEK_CHIP),"CV186AH")
+EXTRA_CFLAGS += -DCHIP_CV186AH
+else
+EXTRA_CFLAGS += -DCHIP_BM1688
+endif
