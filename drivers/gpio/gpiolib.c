@@ -317,29 +317,73 @@ EXPORT_SYMBOL_GPL(gpio_device_get_chip);
 /* dynamic allocation of GPIOs, e.g. on a hotplugged device */
 static int gpiochip_find_base_unlocked(u16 ngpio)
 {
-	unsigned int base = GPIO_DYNAMIC_BASE;
+	/*
+	 * Use reverse allocation (from high to low) to maintain compatibility
+	 * with Linux 5.10 behavior and existing hardware specifications.
+	 * This matches the allocation strategy used in Linux 5.10 where GPIOs
+	 * are allocated from ARCH_NR_GPIOS (512) downwards.
+	 *
+	 * We use 512 as the upper limit to exactly match Linux 5.10's ARCH_NR_GPIOS,
+	 * ensuring compatibility with existing code that hardcodes GPIO base values
+	 * (e.g., 480, 448, 416, 384, 352, 320, 288) based on Linux 5.10's reverse
+	 * allocation pattern.
+	 */
+#define GPIO_REVERSE_ALLOC_MAX	512
+	unsigned int base = GPIO_REVERSE_ALLOC_MAX - ngpio;
 	struct gpio_device *gdev;
+	bool overlap;
 
-	list_for_each_entry_srcu(gdev, &gpio_devices, list,
-				 lockdep_is_held(&gpio_devices_lock)) {
-		/* found a free space? */
-		if (gdev->base >= base + ngpio)
-			break;
-		/* nope, check the space right after the chip */
-		base = gdev->base + gdev->ngpio;
-		if (base < GPIO_DYNAMIC_BASE)
-			base = GPIO_DYNAMIC_BASE;
-		if (base > GPIO_DYNAMIC_MAX - ngpio)
-			break;
-	}
+	/*
+	 * Since we use srcu (sleepable RCU), we can't use list_for_each_entry_reverse.
+	 * To implement reverse allocation like Linux 5.10, we use a loop that:
+	 * 1. Starts from GPIO_REVERSE_ALLOC_MAX - ngpio (480 for 32 GPIOs)
+	 * 2. Checks all existing chips for overlaps
+	 * 3. If overlap found with any chip, place new chip before the highest overlapping chip
+	 * 4. Repeat until no overlap found
+	 * This mimics the reverse traversal behavior of Linux 5.10
+	 */
+	do {
+		overlap = false;
+		unsigned int highest_overlap = 0;
 
-	if (base <= GPIO_DYNAMIC_MAX - ngpio) {
-		pr_debug("%s: found new base at %d\n", __func__, base);
+		/* Find the highest chip that overlaps with our candidate base */
+		list_for_each_entry_srcu(gdev, &gpio_devices, list,
+					 lockdep_is_held(&gpio_devices_lock)) {
+			/* Check if this chip overlaps with our candidate base */
+			if (gdev->base < base + ngpio && gdev->base + gdev->ngpio > base) {
+				overlap = true;
+				/* Track the highest overlapping chip base */
+				if (gdev->base > highest_overlap)
+					highest_overlap = gdev->base;
+			}
+		}
+
+		/* If we found an overlap, place new chip before the highest overlapping chip */
+		if (overlap) {
+			if (highest_overlap >= ngpio) {
+				base = highest_overlap - ngpio;
+			} else {
+				pr_err("%s: cannot find free range (chip at %u blocks allocation)\n",
+				       __func__, highest_overlap);
+				return -ENOSPC;
+			}
+		}
+	} while (overlap);
+
+	/* Ensure base is within valid range for reverse allocation */
+	if (base > GPIO_REVERSE_ALLOC_MAX - ngpio)
+		base = GPIO_REVERSE_ALLOC_MAX - ngpio;
+
+	/* Verify the base is valid (0 to GPIO_REVERSE_ALLOC_MAX - ngpio) */
+	if (base <= GPIO_REVERSE_ALLOC_MAX - ngpio) {
+		pr_debug("%s: found new base at %d (reverse allocation, compatible with 5.10)\n",
+			 __func__, base);
 		return base;
 	} else {
 		pr_err("%s: cannot find free range\n", __func__);
 		return -ENOSPC;
 	}
+#undef GPIO_REVERSE_ALLOC_MAX
 }
 
 /**
