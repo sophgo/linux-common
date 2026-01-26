@@ -534,6 +534,7 @@ repeat:
 	else
 		__clear_close_on_exec(fd, fdt);
 	error = fd;
+
 #if 1
 	/* Sanity check */
 	if (rcu_access_pointer(fdt->fd[fd]) != NULL) {
@@ -655,6 +656,9 @@ int close_fd(unsigned fd)
 {
 	struct files_struct *files = current->files;
 	struct file *file;
+
+	if (!files)
+		return -EBADF;
 
 	spin_lock(&files->file_lock);
 	file = file_close_fd_locked(files, fd);
