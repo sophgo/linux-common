@@ -20,4 +20,7 @@ struct dw_hdmi_i2s_audio_data {
 	u8 *(*get_eld)(struct dw_hdmi *hdmi);
 };
 
+#define REG_AXI_ADDR_EXT_OW (0x67000120)
+#define REG_AXI_ADDR_EXT1   (0x67000128)
+
 #endif
