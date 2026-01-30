@@ -358,17 +358,8 @@ static long cvitek_ion_ioctl(struct ion_device *dev, unsigned int cmd, unsigned 
 		}
 
 		pr_debug("ion invalidate:%p, %u\n", data.start, data.size);
-#ifdef CONFIG_ARM
-		pa = get_user_pa((u32)data.start);
-#else
-		pa = get_user_pa((u64)data.start);
-#endif
-		if (!pa) {
-			pr_err("pa is 0\n");
-			break;
-		}
 
-		va = (unsigned long)phys_to_virt(pa);
+		va = (unsigned long)phys_to_virt(data.paddr);
 		pr_debug("IonInv  va:%lx, pa:%lx\n", va, pa);
 #ifdef CONFIG_ARM
 		invalidate_kernel_vmap_range((void *)va, data.size);
