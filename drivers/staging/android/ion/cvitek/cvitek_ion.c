@@ -229,54 +229,43 @@ static int cvitek_get_heap_info(struct ion_device *dev, struct cvitek_heap_info 
 #if defined(CONFIG_ARM) || defined(__arm__) || defined(__aarch64__)
 static u64 get_user_pa(u64 user_addr)
 {
-	pgd_t *pgd; //= (pgd_t*)per_cpu(current_pgd, smp_processor_id());
-	p4d_t *p4d;
-	pud_t *pud;
-	pmd_t *pmd;
-	pte_t *pte;
-	struct mm_struct *mm;
-	u64 pa;
+    pgd_t *pgd;
+    p4d_t *p4d;
+    pud_t *pud;
+    pmd_t *pmd;
+    pte_t *pte;
+    struct mm_struct *mm;
+    u64 pa = 0;
 
-	if (!find_vma(current->mm, user_addr)) {
-		pr_err("no va %llx\n", user_addr);
-		goto exit;
-	}
+    mm = current->mm;
+    if (!mm) {
+        pr_err("no vm_mm\n");
+        return 0;
+    }
 
-	mm = current->mm;
-	if (!mm) {
-		pr_err("no vm_mm\n");
-		goto exit;
-	}
+    pgd = pgd_offset(mm, user_addr);
+    if (pgd_none(*pgd) || pgd_bad(*pgd))
+        goto exit;
 
-	pgd = pgd_offset(mm, user_addr);
-	pr_debug("[%08llx] *pgd=%016llx", user_addr, pgd_val(*pgd));
-	if (pgd_none(*pgd) || pgd_bad(*pgd))
-		goto exit;
+    p4d = p4d_offset(pgd, user_addr);
+    pud = pud_offset(p4d, user_addr);
+    if (pud_none(*pud) || pud_bad(*pud))
+        goto exit;
 
-	p4d = p4d_offset(pgd, user_addr);
-	pud = pud_offset(p4d, user_addr);
-	pr_debug(", *pud=%016llx", pud_val(*pud));
-	if (pud_none(*pud) || pud_bad(*pud))
-		goto exit;
+    pmd = pmd_offset(pud, user_addr);
+    if (pmd_none(*pmd) || pmd_bad(*pmd))
+        goto exit;
 
-	pmd = pmd_offset(pud, user_addr);
-	pr_debug(", *pmd=%016llx", pmd_val(*pmd));
-	if (pmd_none(*pmd) || pmd_bad(*pmd))
-		goto exit;
+    pte = pte_offset_map(pmd, user_addr);
+    if (!pte_present(*pte))
+        goto exit_unmap;
 
-	pte = pte_offset_map(pmd, user_addr);
-	pr_debug(", *pte=%016llx", pte_val(*pte));
-	if (!pte_present(*pte))
-		goto exit;
+    pa = (pte_val(*pte) & PHYS_MASK & PAGE_MASK) | (user_addr & ~PAGE_MASK);
 
-	pa = ((pte_val(*pte) & PHYS_MASK) & PAGE_MASK) |
-						(user_addr & ~PAGE_MASK);
-
-	return pa;
-
+exit_unmap:
+    pte_unmap(pte);
 exit:
-	pr_err("failed to get pa\n");
-	return 0;
+    return pa;
 }
 
 void bm_flush_dcache_area(void *addr, size_t size)
@@ -327,6 +316,7 @@ static long cvitek_ion_ioctl(struct ion_device *dev, unsigned int cmd, unsigned 
 	case ION_IOC_CVITEK_FLUSH_RANGE:
 	{
 		struct cvitek_cache_range data;
+		unsigned long  va, pa;
 
 		if (copy_from_user(&data, (void __user *)arg, sizeof(data)))
 			return -EFAULT;
@@ -335,13 +325,18 @@ static long cvitek_ion_ioctl(struct ion_device *dev, unsigned int cmd, unsigned 
 			pr_err("flush fault addr %p, size %u!\n", data.start, data.size);
 			return -EFAULT;
 		}
-
-		pr_debug("flush addr %p, size %u\n", data.start, data.size);
 #ifdef CONFIG_ARM
-		__cpuc_flush_user_range((u32)data.start, ((u32)data.start) + data.size, 0);
+		pa = get_user_pa((u32)data.start);
 #else
-		flush_icache_user_range((u64)data.start, ((u64)data.start) + data.size);
+		pa = get_user_pa((u64)data.start);
 #endif
+		if (!pa) {
+			pr_err("pa is 0\n");
+			break;
+		}
+		pr_debug("ion flush start:%p,pa:%#llx %u\n", data.start, pa, data.size);
+		arch_sync_dma_for_device(pa, data.size, DMA_TO_DEVICE);
+
 		break;
 	}
 	case ION_IOC_CVITEK_INVALIDATE_RANGE:
@@ -357,15 +352,18 @@ static long cvitek_ion_ioctl(struct ion_device *dev, unsigned int cmd, unsigned 
 			return -EFAULT;
 		}
 
-		pr_debug("ion invalidate:%p, %u\n", data.start, data.size);
-
-		va = (unsigned long)phys_to_virt(data.paddr);
-		pr_debug("IonInv  va:%lx, pa:%lx\n", va, pa);
 #ifdef CONFIG_ARM
-		invalidate_kernel_vmap_range((void *)va, data.size);
+		pa = get_user_pa((u32)data.start);
 #else
-		bm_inval_dcache_area((void *)va, data.size);
+		pa = get_user_pa((u64)data.start);
 #endif
+		if (!pa) {
+			pr_err("pa is 0\n");
+			break;
+		}
+		pr_debug("ion invalidate start:%p,pa:%#llx %u\n", data.start, pa, data.size);
+		arch_sync_dma_for_cpu(pa, data.size, DMA_FROM_DEVICE);
+
 		break;
 	}
 #endif
@@ -392,16 +390,9 @@ static long cvitek_ion_ioctl(struct ion_device *dev, unsigned int cmd, unsigned 
 		if (copy_from_user(&data, (void __user *)arg, sizeof(data)))
 			return -EFAULT;
 
-		pr_debug("flush addr %#llx, size %u\n", data.paddr, data.size);
+		pr_debug("flush phy addr %#llx, size %u\n", data.paddr, data.size);
 
-#if defined(__arm__) || defined(__aarch64__)
-		/* compatible with previous version */
-		/* it could be removed and replaced by arch_sync_dma_for_device later */
-		//__dma_map_area(phys_to_virt(data.paddr), data.size, DMA_TO_DEVICE);
-		dma_map_single(NULL, phys_to_virt(data.paddr), data.size, DMA_TO_DEVICE);
-#else
 		arch_sync_dma_for_device(data.paddr, data.size, DMA_TO_DEVICE);
-#endif
 		break;
 	}
 	case ION_IOC_CVITEK_INVALIDATE_PHY_RANGE:
@@ -412,17 +403,10 @@ static long cvitek_ion_ioctl(struct ion_device *dev, unsigned int cmd, unsigned 
 		if (copy_from_user(&data, (void __user *)arg, sizeof(data)))
 			return -EFAULT;
 
-		pr_debug("invalidate addr %#llx, size %u\n", data.paddr, data.size);
+		pr_debug("invalidate phy addr %#llx, size %u\n", data.paddr, data.size);
 
 
-#if defined(__arm__) || defined(__aarch64__)
-		/* compatible with previous version */
-		/* it could be removed and replaced by arch_sync_dma_for_device later */
-		//__dma_map_area(phys_to_virt(data.paddr), data.size, DMA_FROM_DEVICE);
-		dma_map_single(NULL, phys_to_virt(data.paddr), data.size, DMA_FROM_DEVICE);
-#else
-		arch_sync_dma_for_device(data.paddr, data.size, DMA_FROM_DEVICE);
-#endif
+		arch_sync_dma_for_cpu(data.paddr, data.size, DMA_FROM_DEVICE);
 		break;
 	}
 	default:

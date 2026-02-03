@@ -12,9 +12,6 @@
 
 struct cvitek_cache_range {
 	void *start;
-#ifdef __arm__
-	__u32 padding;
-#endif
 	__u32 size;
 	__u64 paddr;
 };
