@@ -57,7 +57,8 @@
 #define DW_WDT_NUM_TOPS		16
 #define DW_WDT_FIX_TOP(_idx)	(1U << (16 + _idx))
 
-#define DW_WDT_DEFAULT_SECONDS	80
+#define DW_WDT_DEFAULT_SECONDS	85
+#define DW_WDT_BACKTRACE_TIMEOUT (50*1000) /* 50 seconds */
 
 static const u32 dw_wdt_fix_tops[DW_WDT_NUM_TOPS] = {
 	DW_WDT_FIX_TOP(0), DW_WDT_FIX_TOP(1), DW_WDT_FIX_TOP(2),
@@ -218,9 +219,9 @@ static int dw_wdt_ping(struct watchdog_device *wdd)
 #ifdef CONFIG_SMP
 		isFirst = 0;
 		cpus_alive = CPU_MASK_NONE;
-	} else if (delta_ms > (wdd->timeout/2)) {
-        pr_err("Watchdog feed blocked %lld ms! Online CPUs: %d, Responded CPUs: %*pbl\n",
-               delta_ms, ncpus, cpumask_pr_args(&cpus_alive));
+	} else if (delta_ms > DW_WDT_BACKTRACE_TIMEOUT) {
+        pr_err("Watchdog feed blocked %lld ms! Tout: %d, (%d)Responded CPUs: %*pbl\n",
+               delta_ms, wdd->timeout,ncpus, cpumask_pr_args(&cpus_alive));
 
         for_each_online_cpu(cpu) {
             if (!cpumask_test_cpu(cpu, &cpus_alive)) {
