@@ -1461,7 +1461,7 @@ SYSCALL_DEFINE2(setdomainname, char __user *, name, int, len)
 }
 
 /* make sure you are allowed to change @tsk limits before calling this */
-static int do_prlimit(struct task_struct *tsk, unsigned int resource,
+int do_prlimit(struct task_struct *tsk, unsigned int resource,
 		      struct rlimit *new_rlim, struct rlimit *old_rlim)
 {
 	struct rlimit *rlim;
