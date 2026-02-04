@@ -227,7 +227,7 @@ static int cvitek_get_heap_info(struct ion_device *dev, struct cvitek_heap_info 
 	return -1;
 }
 #if defined(CONFIG_ARM) || defined(__arm__) || defined(__aarch64__)
-static u64 get_user_pa(u64 user_addr)
+u64 bm_ion_get_user_pa(u64 user_addr)
 {
     pgd_t *pgd;
     p4d_t *p4d;
@@ -267,6 +267,7 @@ exit_unmap:
 exit:
     return pa;
 }
+EXPORT_SYMBOL(bm_ion_get_user_pa);
 
 void bm_flush_dcache_area(void *addr, size_t size)
 {
@@ -326,9 +327,9 @@ static long cvitek_ion_ioctl(struct ion_device *dev, unsigned int cmd, unsigned 
 			return -EFAULT;
 		}
 #ifdef CONFIG_ARM
-		pa = get_user_pa((u32)data.start);
+		pa = bm_ion_get_user_pa((u32)data.start);
 #else
-		pa = get_user_pa((u64)data.start);
+		pa = bm_ion_get_user_pa((u64)data.start);
 #endif
 		if (!pa) {
 			pr_err("pa is 0\n");
@@ -353,9 +354,9 @@ static long cvitek_ion_ioctl(struct ion_device *dev, unsigned int cmd, unsigned 
 		}
 
 #ifdef CONFIG_ARM
-		pa = get_user_pa((u32)data.start);
+		pa = bm_ion_get_user_pa((u32)data.start);
 #else
-		pa = get_user_pa((u64)data.start);
+		pa = bm_ion_get_user_pa((u64)data.start);
 #endif
 		if (!pa) {
 			pr_err("pa is 0\n");
