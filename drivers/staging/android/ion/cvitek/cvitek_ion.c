@@ -235,37 +235,68 @@ u64 bm_ion_get_user_pa(u64 user_addr)
     pmd_t *pmd;
     pte_t *pte;
     struct mm_struct *mm;
+    struct vm_area_struct *vma;
     u64 pa = 0;
 
-    mm = current->mm;
+    mm = get_task_mm(current);
     if (!mm) {
-        pr_err("no vm_mm\n");
+        pr_err("no vm_mm for current process\n");
         return 0;
     }
 
+    if (mmap_read_lock_killable(mm)) {
+        pr_err("failed to acquire mmap_read_lock for process %d\n", current->pid);
+        goto err_put_mm;
+    }
+
+    vma = find_vma(mm, user_addr);
+    if (!vma) {
+        pr_err("find vma fail, vir addr = 0x%llx, pid = %d\n", user_addr, current->pid);
+        goto err_unlock;
+    }
+
+    if (user_addr < vma->vm_start || user_addr >= vma->vm_end) {
+        pr_err("vir addr 0x%llx out of vma range [0x%lx, 0x%lx], pid = %d\n",
+               user_addr, vma->vm_start, vma->vm_end, current->pid);
+        goto err_unlock;
+    }
+
     pgd = pgd_offset(mm, user_addr);
-    if (pgd_none(*pgd) || pgd_bad(*pgd))
-        goto exit;
+    if (pgd_none(*pgd) || pgd_bad(*pgd)) {
+        goto err_unlock;
+    }
 
     p4d = p4d_offset(pgd, user_addr);
+
     pud = pud_offset(p4d, user_addr);
-    if (pud_none(*pud) || pud_bad(*pud))
-        goto exit;
+    if (pud_none(*pud) || pud_bad(*pud)) {
+        goto err_unlock;
+    }
 
     pmd = pmd_offset(pud, user_addr);
-    if (pmd_none(*pmd) || pmd_bad(*pmd))
-        goto exit;
+    if (pmd_none(*pmd) || pmd_bad(*pmd)) {
+        goto err_unlock;
+    }
 
     pte = pte_offset_map(pmd, user_addr);
-    if (!pte_present(*pte))
-        goto exit_unmap;
+    if (!pte) {
+        goto err_unlock;
+    }
+    
+    if (!pte_present(*pte)) {
+        goto err_unmap;
+    }
 
     pa = (pte_val(*pte) & PHYS_MASK & PAGE_MASK) | (user_addr & ~PAGE_MASK);
 
-exit_unmap:
+err_unmap:
     pte_unmap(pte);
-exit:
-    return pa;
+err_unlock:
+    mmap_read_unlock(mm);
+err_put_mm:
+    mmput(mm);
+    
+    return pa; 
 }
 EXPORT_SYMBOL(bm_ion_get_user_pa);
 
