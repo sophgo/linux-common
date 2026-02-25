@@ -185,6 +185,7 @@ struct dw_hdmi_property_ops {
 struct dw_hdmi_plat_data {
 	struct regmap *regm;
 
+	unsigned int output_port;
 	unsigned long input_bus_format;
 	unsigned long input_bus_encoding;
 	unsigned int max_tmdsclk;
@@ -205,6 +206,10 @@ struct dw_hdmi_plat_data {
 					   void *data,
 					   const struct drm_display_info *info,
 					   const struct drm_display_mode *mode);
+	/* Platform-specific audio enable/disable (optional) */
+	void (*enable_audio)(struct dw_hdmi *hdmi, int channel,
+			     int width, int rate, int non_pcm);
+	void (*disable_audio)(struct dw_hdmi *hdmi);
 
 	/* Vendor PHY support */
 	const struct dw_hdmi_phy_ops *phy_ops;
@@ -218,6 +223,7 @@ struct dw_hdmi_plat_data {
 	const struct dw_hdmi_phy_config *phy_config;
 	int (*configure_phy)(struct dw_hdmi *hdmi, void *data,
 			     unsigned long mpixelclock);
+	unsigned int disable_cec : 1;
 	struct phy_config* (*phy316_config)(u32 pClk, color_depth_t color,
 		pixel_repetition_t pixel);
 	unsigned long (*get_input_bus_format)(void *data);
