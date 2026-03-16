@@ -404,9 +404,9 @@ static int start_streaming(struct imx900 *imx900)
 
 	usleep_range(100 * 1000, 200 * 1000);
 	/* Apply customized values from user */
-	ret =  __v4l2_ctrl_handler_setup(imx900->sd.ctrl_handler);
-	if (ret)
-		return ret;
+	// ret =  __v4l2_ctrl_handler_setup(imx900->sd.ctrl_handler);
+	// if (ret)
+	// 	return ret;
 
 	dev_info(&client->dev, "wdr_mode(%d) reg setting done\n", imx900->cur_mode->mipi_wdr_mode);
 
@@ -583,8 +583,11 @@ static int imx900_update_link_menu(struct imx900 *imx900)
 
 	dev_info(&client->dev, "update mipi_mode:%lld", imx900_link_cif_menu[id][wdr_index]);
 
-	ctrl_hdlr = imx900->sd.ctrl_handler;
+	ctrl_hdlr = &imx900->ctrl_handler;
+	imx900->sd.ctrl_handler = NULL;
 	v4l2_ctrl_handler_free(ctrl_hdlr);
+
+	mutex_init(&imx900->mutex);
 
 	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 10);
 	if (ret) {
@@ -592,6 +595,7 @@ static int imx900_update_link_menu(struct imx900 *imx900)
 			__func__, ret);
 		return ret;
 	}
+	ctrl_hdlr->lock = &imx900->mutex;
 
 	for (i = 0; i < SNS_CFG_TYPE_MAX; i++) {
 		ctrl = v4l2_ctrl_new_int_menu(ctrl_hdlr, &imx900_ctrl_ops, V4L2_CID_LINK_FREQ,
@@ -609,10 +613,15 @@ static int imx900_update_link_menu(struct imx900 *imx900)
 		goto error;
 	}
 
+	imx900->sd.ctrl_handler = ctrl_hdlr;
+
+	dev_info(&client->dev, "update link menu done\n");
+
 	return 0;
 
 error:
 	v4l2_ctrl_handler_free(ctrl_hdlr);
+	mutex_destroy(&imx900->mutex);
 
 	return ret;
 }

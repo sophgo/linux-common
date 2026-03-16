@@ -415,9 +415,9 @@ static int start_streaming(struct pr2020 *pr2020)
 
 	usleep_range(100 * 1000, 200 * 1000);
 	/* Apply customized values from user */
-	ret =  __v4l2_ctrl_handler_setup(pr2020->sd.ctrl_handler);
-	if (ret)
-		return ret;
+	// ret =  __v4l2_ctrl_handler_setup(pr2020->sd.ctrl_handler);
+	// if (ret)
+	// 	return ret;
 
 	dev_info(&client->dev, "wdr_mode(%d) reg setting done\n", pr2020->cur_mode->mipi_wdr_mode);
 

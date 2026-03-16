@@ -18,12 +18,13 @@ static struct v4l2_subdev *get_remote_sd(struct v4l2_subdev *sd)
 		vi_pr(VI_ERR, "%s pad[%d] do not exist!\n", sd->entity.name, pad_id);
 		return NULL;
 	}
-	remote = media_pad_remote_pad_unique(local);
+	remote = media_pad_remote_pad_first(local);
 	if (!remote) {
 		return NULL;
 	}
 
 	remote_me = remote->entity;
+
 	remote_sd = media_entity_to_v4l2_subdev(remote_me);
 
 	return remote_sd;
@@ -68,7 +69,7 @@ static struct v4l2_subdev *get_remote_sensor(struct v4l2_subdev *sd, int pad_id)
 			remote_cif->entity.name, pad_id);
 		return NULL;
 	}
-	remote = media_pad_remote_pad_unique(local);
+	remote = media_pad_remote_pad_first(local);
 	if (!remote) {
 		return NULL;
 	}

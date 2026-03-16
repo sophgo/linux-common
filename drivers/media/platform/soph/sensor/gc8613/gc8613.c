@@ -408,9 +408,9 @@ static int start_streaming(struct gc8613 *gc8613)
 
 	usleep_range(100 * 1000, 200 * 1000);
 	/* Apply customized values from user */
-	ret =  __v4l2_ctrl_handler_setup(gc8613->sd.ctrl_handler);
-	if (ret)
-		return ret;
+	// ret =  __v4l2_ctrl_handler_setup(gc8613->sd.ctrl_handler);
+	// if (ret)
+	// 	return ret;
 
 	dev_info(&client->dev, "wdr_mode(%d) reg setting done\n", gc8613->cur_mode->mipi_wdr_mode);
 
@@ -586,8 +586,11 @@ static int gc8613_update_link_menu(struct gc8613 *gc8613)
 
 	dev_info(&client->dev, "update mipi_mode:%lld", gc8613_link_cif_menu[id][wdr_index]);
 
-	ctrl_hdlr = gc8613->sd.ctrl_handler;
+	ctrl_hdlr = &gc8613->ctrl_handler;
+	gc8613->sd.ctrl_handler = NULL;
 	v4l2_ctrl_handler_free(ctrl_hdlr);
+
+	mutex_init(&gc8613->mutex);
 
 	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 10);
 	if (ret) {
@@ -595,6 +598,7 @@ static int gc8613_update_link_menu(struct gc8613 *gc8613)
 			__func__, ret);
 		return ret;
 	}
+	ctrl_hdlr->lock = &gc8613->mutex;
 
 	for (i = 0; i < SNS_CFG_TYPE_MAX; i++) {
 		ctrl = v4l2_ctrl_new_int_menu(ctrl_hdlr, &gc8613_ctrl_ops, V4L2_CID_LINK_FREQ,
@@ -612,10 +616,15 @@ static int gc8613_update_link_menu(struct gc8613 *gc8613)
 		goto error;
 	}
 
+	gc8613->sd.ctrl_handler = ctrl_hdlr;
+
+	dev_info(&client->dev, "update link menu done\n");
+
 	return 0;
 
 error:
 	v4l2_ctrl_handler_free(ctrl_hdlr);
+	mutex_destroy(&gc8613->mutex);
 
 	return ret;
 }

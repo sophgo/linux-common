@@ -760,8 +760,7 @@ static int cif_notifier(struct cvi_cif_dev *dev)
 	}
 
 	// ret = v4l2_async_register_subdev(&dev->sd);
-
-	// CIF_PR(CIF_ERROR, "cif register notifier done:%d\n", ret);
+	// CIF_PR(CIF_DEBUG, "cif register notifier done:%d\n", ret);
 
 	return ret;
 }
@@ -842,6 +841,11 @@ int cif_init_subdev(struct platform_device *pdev, struct cvi_cif_dev *dev)
 	v4l2_subdev_init(&dev->sd, &cif_subdev_ops);
 	/*set subdev parameter, must be set after init subdev*/
 	//dev->sd.dev = &pdev->dev;
+	dev->sd.fwnode = dev_fwnode(&pdev->dev);
+	if (!dev->sd.fwnode) {
+		dev_err(&pdev->dev, "failed to get fwnode for subdev!\n");
+		return -EINVAL;
+	}
 	dev->sd.owner = THIS_MODULE;
 	dev->sd.grp_id = GRP_ID_CIF;
 	dev->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE | V4L2_SUBDEV_FL_HAS_EVENTS;
@@ -851,6 +855,7 @@ int cif_init_subdev(struct platform_device *pdev, struct cvi_cif_dev *dev)
 	if (rc < 0) {
 		dev_err(&pdev->dev, "failed to copy subdev name :%d\n", rc);
 	}
+	dev->sd.entity.name = dev->sd.name;
 
 	/*init pads*/
 	for (i = 0; i < CIF_PAD_NUM; i++) {

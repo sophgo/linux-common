@@ -425,9 +425,9 @@ static int start_streaming(struct os04a10 *os04a10)
 
 	usleep_range(100 * 1000, 200 * 1000);
 	/* Apply customized values from user */
-	ret =  __v4l2_ctrl_handler_setup(os04a10->sd.ctrl_handler);
-	if (ret)
-		return ret;
+	// ret =  __v4l2_ctrl_handler_setup(os04a10->sd.ctrl_handler);
+	// if (ret)
+	// 	return ret;
 
 	dev_info(&client->dev, "wdr_mode(%d) reg setting done\n", os04a10->cur_mode->mipi_wdr_mode);
 
@@ -606,8 +606,11 @@ static int os04a10_update_link_menu(struct os04a10 *os04a10)
 
 	dev_info(&client->dev, "update mipi_mode:%lld", os04a10_link_cif_menu[id][wdr_index]);
 
-	ctrl_hdlr = os04a10->sd.ctrl_handler;
+	ctrl_hdlr = &os04a10->ctrl_handler;
+	os04a10->sd.ctrl_handler = NULL;
 	v4l2_ctrl_handler_free(ctrl_hdlr);
+
+	mutex_init(&os04a10->mutex);
 
 	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 10);
 	if (ret) {
@@ -615,6 +618,7 @@ static int os04a10_update_link_menu(struct os04a10 *os04a10)
 			__func__, ret);
 		return ret;
 	}
+	ctrl_hdlr->lock = &os04a10->mutex;
 
 	for (i = 0; i < SNS_CFG_TYPE_MAX; i++) {
 		ctrl = v4l2_ctrl_new_int_menu(ctrl_hdlr, &os04a10_ctrl_ops, V4L2_CID_LINK_FREQ,
@@ -632,10 +636,15 @@ static int os04a10_update_link_menu(struct os04a10 *os04a10)
 		goto error;
 	}
 
+	os04a10->sd.ctrl_handler = ctrl_hdlr;
+
+	dev_info(&client->dev, "update link menu done\n");
+
 	return 0;
 
 error:
 	v4l2_ctrl_handler_free(ctrl_hdlr);
+	mutex_destroy(&os04a10->mutex);
 
 	return ret;
 }

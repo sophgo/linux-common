@@ -394,9 +394,9 @@ static int start_streaming(struct ar2020 *ar2020)
 
 	usleep_range(800 * 1000, 1000 * 1000);
 	/* Apply customized values from user */
-	ret =  __v4l2_ctrl_handler_setup(ar2020->sd.ctrl_handler);
-	if (ret)
-		return ret;
+	// ret =  __v4l2_ctrl_handler_setup(ar2020->sd.ctrl_handler);
+	// if (ret)
+	// 	return ret;
 
 	dev_info(&client->dev, "wdr_mode(%d) reg setting done\n", ar2020->cur_mode->mipi_wdr_mode);
 
@@ -533,8 +533,11 @@ static int ar2020_update_link_menu(struct ar2020 *ar2020)
 
 	dev_info(&client->dev, "update mipi_mode:%lld", ar2020_link_cif_menu[id][wdr_index]);
 
-	ctrl_hdlr = ar2020->sd.ctrl_handler;
+	ctrl_hdlr = &ar2020->ctrl_handler;
+	ar2020->sd.ctrl_handler = NULL;
 	v4l2_ctrl_handler_free(ctrl_hdlr);
+
+	mutex_init(&ar2020->mutex);
 
 	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 10);
 	if (ret) {
@@ -542,6 +545,7 @@ static int ar2020_update_link_menu(struct ar2020 *ar2020)
 			__func__, ret);
 		return ret;
 	}
+	ctrl_hdlr->lock = &ar2020->mutex;
 
 	for (i = 0; i < SNS_CFG_TYPE_MAX; i++) {
 		ctrl = v4l2_ctrl_new_int_menu(ctrl_hdlr, &ar2020_ctrl_ops, V4L2_CID_LINK_FREQ,
@@ -559,10 +563,15 @@ static int ar2020_update_link_menu(struct ar2020 *ar2020)
 		goto error;
 	}
 
+	ar2020->sd.ctrl_handler = ctrl_hdlr;
+
+	dev_info(&client->dev, "update link menu done\n");
+
 	return 0;
 
 error:
 	v4l2_ctrl_handler_free(ctrl_hdlr);
+	mutex_destroy(&ar2020->mutex);
 
 	return ret;
 }

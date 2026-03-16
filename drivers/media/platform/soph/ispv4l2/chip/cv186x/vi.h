@@ -1263,7 +1263,12 @@ int vi_core_init(struct platform_device *pdev);
 int vi_core_deinit(struct sop_vi_dev *videv);
 int vi_register_video_device(struct sop_isp_device *isp_dev);
 int vi_destroy_instance(struct sop_isp_device *isp_dev);
-
+void *v4l2_vb_dma_alloc(struct device *dev, size_t size,
+			dma_addr_t *dma_handle, gfp_t gfp, unsigned long attrs);
+void v4l2_vb_dma_free(struct device *dev, size_t size, void *vaddr,
+		      dma_addr_t dma_handle, unsigned long attrs);
+int v4l2_vb_dma_mmap(struct device *dev, struct vm_area_struct *vma,
+			    void *cpu_addr, dma_addr_t dma_addr, size_t size, unsigned long attrs);
 #ifdef __cplusplus
 }
 #endif

@@ -743,7 +743,7 @@ static void v4l2_sys_reg_write_mask(uintptr_t address, u32 mask, u32 data)
 static struct mem_mapping vb2_buf_meminfo[MAX_VB2_BUF_NUM];
 static int vb2_buf_mem_index;
 
-static void *v4l2_vb_dma_alloc(struct device *dev, size_t size,
+void *v4l2_vb_dma_alloc(struct device *dev, size_t size,
 			dma_addr_t *dma_handle, gfp_t gfp, unsigned long attrs)
 {
 	int dmabuf_fd = 0, ret = 0;
@@ -819,7 +819,7 @@ static void *v4l2_vb_dma_alloc(struct device *dev, size_t size,
 	return vmap_addr;
 }
 
-static void v4l2_vb_dma_free(struct device *dev, size_t size, void *vaddr,
+void v4l2_vb_dma_free(struct device *dev, size_t size, void *vaddr,
 		      dma_addr_t dma_handle, unsigned long attrs)
 {
 	struct mem_mapping *mem_info = NULL;
@@ -867,7 +867,7 @@ static void v4l2_vb_dma_free(struct device *dev, size_t size, void *vaddr,
 	mutex_unlock(&g_videv->v4l2_vb_lock);
 }
 
-static int v4l2_vb_dma_mmap(struct device *dev, struct vm_area_struct *vma,
+int v4l2_vb_dma_mmap(struct device *dev, struct vm_area_struct *vma,
 			    void *cpu_addr, dma_addr_t dma_addr, size_t size, unsigned long attrs)
 {
 	unsigned long vm_start = vma->vm_start;
@@ -7233,9 +7233,6 @@ void _vi_sw_init(struct sop_vi_dev *vdev)
 		INIT_LIST_HEAD(&postraw_in_q[i].rdy_queue);
 		pre_be_out_q[i].num_rdy     = 0;
 		postraw_in_q[i].num_rdy     = 0;
-
-		spin_lock_init(&dq_lock[i]);
-		spin_lock_init(&vdev->qbuf_lock[i]);
 	}
 
 	for (i = 0; i < VI_MAX_CHN_NUM; i++) {
@@ -7243,6 +7240,9 @@ void _vi_sw_init(struct sop_vi_dev *vdev)
 		init_waitqueue_head(&vdev->isp_dq_wait_q[i]);
 
 		init_waitqueue_head(&vdev->yuv_dump_wait_q[i]);
+
+		spin_lock_init(&dq_lock[i]);
+		spin_lock_init(&vdev->qbuf_lock[i]);
 	}
 
 	atomic_set(&vdev->pre_be_state[ISP_BE_CH0], ISP_STATE_IDLE);
@@ -11964,7 +11964,8 @@ int vi_core_init(struct platform_device *pdev)
 	videv->dev = &pdev->dev;
 	g_videv = videv;
 #ifdef VI_MEM_BM_ION
-	set_dma_ops(videv->dev, &vb2_dma_ops);
+	// set_dma_ops(videv->dev, &vb2_dma_ops);
+	videv->dev->dma_ops = &vb2_dma_ops;
 #endif
 
 	mutex_init(&videv->dev_lock);
