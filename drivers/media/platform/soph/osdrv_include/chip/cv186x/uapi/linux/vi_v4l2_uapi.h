@@ -4,6 +4,9 @@
 #ifdef __cplusplus
 	extern "C" {
 #endif
+#ifndef __KERNEL__
+#include <stdbool.h>
+#endif
 #include <linux/version.h>
 #if (KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE)
 #include <linux/time_types.h>
