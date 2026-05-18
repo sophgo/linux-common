@@ -26,6 +26,8 @@
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 #include <linux/version.h>
+
+#define PDE_DATA(inode) pde_data(inode)
 #include "local.h"
 #include "cvitek_dw_i2s.h"
 #include "cv1835_i2s_subsys.h"
@@ -341,7 +343,7 @@ static int cvi_dwi2s_startup(struct snd_pcm_substream *substream,
 	dev_info(dev->dev, "%s start *dma_data = %px\n", __func__, dma_data);
 	snd_soc_dai_set_dma_data(cpu_dai, substream, (void *)dma_data);
 	dev_info(dev->dev, "%s end cpu_dai->playback_dma_data = %p\n",
-		__func__, cpu_dai->playback_dma_data);
+		__func__, cpu_dai->stream[substream->stream].dma_data);
 	return 0;
 }
 
@@ -349,7 +351,7 @@ static int cvi_dwi2s_startup(struct snd_pcm_substream *substream,
 static void cvi_dwi2s_shutdown(struct snd_pcm_substream *substream,
 			     struct snd_soc_dai *dai)
 {
-	pr_info("%s not start *dai = %px, *dai->playback_dma_data = %px\n", __func__, dai, dai->playback_dma_data);
+	pr_info("%s not start *dai = %px, *dai->playback_dma_data = %px\n", __func__, dai, dai->stream[substream->stream].dma_data);
 	//snd_soc_dai_set_dma_data(dai, substream, NULL);
 }
 
@@ -722,21 +724,9 @@ static int cvi_dw_i2s_dai_probe(struct snd_soc_dai *cpu_dai)
 	struct cvi_i2s_dev *dev = snd_soc_dai_get_drvdata(cpu_dai);
 
 	dev_info(cpu_dai->dev, "%s start *cpu_dai = %p name = %s\n", __func__, cpu_dai, cpu_dai->name);
-	cpu_dai->playback_dma_data = &dev->play_dma_data;
-	cpu_dai->capture_dma_data = &dev->capture_dma_data;
+	snd_soc_dai_init_dma_data(cpu_dai, &dev->play_dma_data, &dev->capture_dma_data);
 
-	if (cpu_dai->playback_dma_data == NULL) {
-		dev_err(cpu_dai->dev, "%s playback_dma_data == NULL\n", __func__);
-	}
-
-	if (cpu_dai->capture_dma_data == NULL) {
-		dev_err(cpu_dai->dev, "%s capture_dma_data == NULL\n", __func__);
-	}
-
-	dev_info(cpu_dai->dev, "%s end cpu_dai->playback_dma_data = %p\n", __func__, cpu_dai->playback_dma_data);
-    dev_info(cpu_dai->dev, "%s end cpu_dai->capture_dma_data = %p\n", __func__, cpu_dai->capture_dma_data);
 	return 0;
-
 }
 
 static int i2s_proc_show(struct seq_file *m, void *v)
@@ -834,7 +824,6 @@ static int cvi_dw_i2s_probe(struct platform_device *pdev)
 	//cvi_i2s_dai->resume = cvi_dwi2s_resume;
 	cvi_i2s_dai->ops = &cvi_dw_i2s_dai_ops;
 	cvi_i2s_dai->name = "cvi_dw_i2s_probe";
-    cvi_i2s_dai->probe = cvi_dw_i2s_dai_probe;
 
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -952,7 +941,7 @@ dwerr_clk_disable:
 };
 
 
-static int cvi_dw_i2s_remove(struct platform_device *pdev)
+static void cvi_dw_i2s_remove(struct platform_device *pdev)
 {
 	struct cvi_i2s_dev *dev = dev_get_drvdata(&pdev->dev);
 
@@ -960,8 +949,7 @@ static int cvi_dw_i2s_remove(struct platform_device *pdev)
 		clk_disable_unprepare(dev->clk);
 
 	pm_runtime_disable(&pdev->dev);
-	return 0;
-};
+}
 
 #ifdef CONFIG_OF
 static const struct of_device_id cvi_dwi2s_of_match[] = {
